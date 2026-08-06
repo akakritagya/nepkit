@@ -96,8 +96,19 @@ _CUMULATIVE_OFFSET: dict[int, int] = _build_cumulative_offsets(_YEARS)
 
 MIN_BS_YEAR: int = _YEARS[0].year
 MAX_BS_YEAR: int = _YEARS[-1].year
-ANCHOR_BS: tuple[int, int, int] = (MIN_BS_YEAR, 1, 1)
+
+# ANCHOR_BS and ANCHOR_AD are one fact (see data/DATA.md) pinned as two literals
+# because ANCHOR_AD cannot be derived from calendar.json's month lengths alone.
+# The assertion below keeps them from silently drifting apart if calendar.json's
+# first year ever changes.
+ANCHOR_BS: tuple[int, int, int] = (2000, 1, 1)
 ANCHOR_AD: date = date(1943, 4, 14)
+
+if ANCHOR_BS[0] != MIN_BS_YEAR:
+    raise CalendarDataError(
+        f"ANCHOR_BS year {ANCHOR_BS[0]} does not match calendar.json's first year "
+        f"{MIN_BS_YEAR} — the anchor and the bundled data have gone out of sync"
+    )
 
 
 def days_in_month(year: int, month: int) -> int:
@@ -109,3 +120,12 @@ def days_in_month(year: int, month: int) -> int:
     if not (1 <= month <= _MONTHS_PER_YEAR):
         raise InvalidDateError(f"BS month {month} is outside [1, {_MONTHS_PER_YEAR}]")
     return _BY_YEAR[year].months[month - 1]
+
+
+def days_from_anchor(year: int, month: int, day: int) -> int:
+    """Days from ANCHOR_BS to the given BS date. The one primitive bs_to_ad needs."""
+    max_day = days_in_month(year, month)  # validates year and month
+    if not (1 <= day <= max_day):
+        raise InvalidDateError(f"BS {year}-{month:02d}: day {day} is outside [1, {max_day}]")
+    days_before_month = sum(_BY_YEAR[year].months[: month - 1])
+    return _CUMULATIVE_OFFSET[year] + days_before_month + (day - 1)
