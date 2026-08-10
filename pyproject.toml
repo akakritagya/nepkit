@@ -44,7 +44,6 @@ requires = ["uv_build>=0.12.1,<0.13.0"]
 
 [tool.ruff]
 indent-width = 4
-line-ending = "lf"
 line-length = 100
 target-version = "py312"
 
@@ -53,6 +52,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF"]
 
 [tool.ruff.format]
 docstring-code-format = true
+line-ending = "lf"
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --strict-config"
