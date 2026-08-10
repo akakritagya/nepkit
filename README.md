@@ -38,9 +38,14 @@ one planned.
 ## Development
 
 ```bash
-uv sync --group dev   # install dev dependencies (pytest, ruff, mypy)
-uv run pytest         # run tests
-uv run ruff check .   # lint
-uv run ruff format .  # format
-uv run mypy           # type check
+uv sync --group dev          # install dev dependencies (pytest, ruff, mypy, pre-commit)
+uv run pytest                # run tests
+uv run ruff check .          # lint
+uv run ruff format .         # format
+uv run mypy                  # type check
+uv run pre-commit install    # one-time: enable git hooks (also --hook-type commit-msg)
 ```
+
+`pre-commit` runs lint, format, and type-check on every commit; blocks large
+files, private keys, and direct commits to `main`; and enforces [Conventional
+Commits](https://www.conventionalcommits.org/) on the commit message.
