@@ -35,6 +35,16 @@ repos:
         types: [python]
         pass_filenames: false
 
+      # pre-push, not pre-commit: the full suite is worth blocking a push over,
+      # but running it on every single commit is what gets --no-verify'd once
+      # the suite grows.
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
     hooks:

@@ -43,9 +43,13 @@ uv run pytest                # run tests
 uv run ruff check .          # lint
 uv run ruff format .         # format
 uv run mypy                  # type check
-uv run pre-commit install    # one-time: enable git hooks (also --hook-type commit-msg)
+uv run pre-commit install                     # one-time: lint/format/type-check on every commit
+uv run pre-commit install --hook-type commit-msg  # one-time: enforce Conventional Commits
+uv run pre-commit install --hook-type pre-push    # one-time: run the full test suite before push
 ```
 
 `pre-commit` runs lint, format, and type-check on every commit; blocks large
-files, private keys, and direct commits to `main`; and enforces [Conventional
+files, private keys, and direct commits to `main`; runs the full `pytest`
+suite before `push` (not on every commit — too slow to survive contact with
+a growing suite); and enforces [Conventional
 Commits](https://www.conventionalcommits.org/) on the commit message.
