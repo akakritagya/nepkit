@@ -1,9 +1,13 @@
 """Tier 1: prove each calendar_data invariant rejects a deliberately bad row."""
 
+import json
 from datetime import date
+from importlib import resources
+from typing import Self
 
 import pytest
 
+from nepkit import calendar_data
 from nepkit.calendar_data import (
     ANCHOR,
     MAX_BS_YEAR,
@@ -19,22 +23,28 @@ from nepkit.exceptions import CalendarDataError, DateOutOfRangeError, InvalidDat
 
 
 def test_wrong_month_count_is_rejected() -> None:
-    with pytest.raises(CalendarDataError):
+    with pytest.raises(CalendarDataError, match="expected 12 months, got 11"):
         BSYearData(year=2000, months=(30, 31, 30, 31, 30, 31, 30, 31, 30, 31, 30))
 
 
 def test_month_length_too_low_is_rejected() -> None:
-    with pytest.raises(CalendarDataError):
-        BSYearData(year=2000, months=(28, 31, 30, 31, 30, 31, 30, 31, 30, 31, 30, 31))
+    # Sums to 365 and every other month is in range, so only the first month's
+    # 28 days (below the 29 minimum) can be what trips this.
+    months = (28, 32, 32, 32, 31, 31, 30, 30, 30, 30, 30, 29)
+    with pytest.raises(CalendarDataError, match="month 1: 28 days is outside"):
+        BSYearData(year=2000, months=months)
 
 
 def test_month_length_too_high_is_rejected() -> None:
-    with pytest.raises(CalendarDataError):
-        BSYearData(year=2000, months=(33, 31, 30, 31, 30, 31, 30, 31, 30, 31, 30, 31))
+    # Sums to 365 and every other month is in range, so only the first month's
+    # 33 days (above the 32 maximum) can be what trips this.
+    months = (33, 30, 30, 30, 30, 30, 30, 30, 30, 30, 31, 31)
+    with pytest.raises(CalendarDataError, match="month 1: 33 days is outside"):
+        BSYearData(year=2000, months=months)
 
 
 def test_year_total_out_of_range_is_rejected() -> None:
-    with pytest.raises(CalendarDataError):
+    with pytest.raises(CalendarDataError, match="year totals 348 days"):
         BSYearData(year=2000, months=(29,) * 12)  # sums to 348, no real BS year is that short
 
 
@@ -58,24 +68,28 @@ def test_contiguity_duplicate_is_rejected_as_duplicate_not_gap() -> None:
         _check_contiguous(years)
 
 
+# Not parametrized: the wrong-day case carries a comment explaining why a
+# year-only check would miss it, and that's the whole point of this cluster —
+# folding it into an `ids` list would bury the one comment worth reading.
 def test_anchor_year_mismatch_is_rejected() -> None:
-    bad_anchor = Anchor(bs_year=2001, bs_month=1, bs_day=1, ad_date=date(1943, 4, 14))
-    with pytest.raises(CalendarDataError):
-        _check_anchor_is_first_day_of_min_year(bad_anchor, 2000)
+    bad_year = MIN_BS_YEAR + 1
+    bad_anchor = Anchor(bs_year=bad_year, bs_month=1, bs_day=1, ad_date=date(1943, 4, 14))
+    with pytest.raises(CalendarDataError, match=f"{bad_year}-01-01 is not the first day"):
+        _check_anchor_is_first_day_of_min_year(bad_anchor, MIN_BS_YEAR)
 
 
 def test_anchor_matching_year_but_wrong_day_is_rejected() -> None:
     # Year matches, so a year-only check would miss this: every offset built from
     # this anchor would be silently short by two days.
-    bad_anchor = Anchor(bs_year=2000, bs_month=1, bs_day=3, ad_date=date(1943, 4, 14))
-    with pytest.raises(CalendarDataError):
-        _check_anchor_is_first_day_of_min_year(bad_anchor, 2000)
+    bad_anchor = Anchor(bs_year=MIN_BS_YEAR, bs_month=1, bs_day=3, ad_date=date(1943, 4, 14))
+    with pytest.raises(CalendarDataError, match=f"{MIN_BS_YEAR}-01-03 is not the first day"):
+        _check_anchor_is_first_day_of_min_year(bad_anchor, MIN_BS_YEAR)
 
 
 def test_anchor_matching_year_but_wrong_month_is_rejected() -> None:
-    bad_anchor = Anchor(bs_year=2000, bs_month=5, bs_day=1, ad_date=date(1943, 4, 14))
-    with pytest.raises(CalendarDataError):
-        _check_anchor_is_first_day_of_min_year(bad_anchor, 2000)
+    bad_anchor = Anchor(bs_year=MIN_BS_YEAR, bs_month=5, bs_day=1, ad_date=date(1943, 4, 14))
+    with pytest.raises(CalendarDataError, match=f"{MIN_BS_YEAR}-05-01 is not the first day"):
+        _check_anchor_is_first_day_of_min_year(bad_anchor, MIN_BS_YEAR)
 
 
 def test_bundled_range_matches_expected_bounds() -> None:
@@ -88,24 +102,21 @@ def test_days_in_month_returns_bundled_value() -> None:
     assert days_in_month(2090, 12) == 30
 
 
-def test_days_in_month_rejects_year_below_range() -> None:
-    with pytest.raises(DateOutOfRangeError):
-        days_in_month(MIN_BS_YEAR - 1, 1)
-
-
-def test_days_in_month_rejects_year_above_range() -> None:
-    with pytest.raises(DateOutOfRangeError):
-        days_in_month(MAX_BS_YEAR + 1, 1)
-
-
-def test_days_in_month_rejects_month_zero() -> None:
-    with pytest.raises(InvalidDateError):
-        days_in_month(MIN_BS_YEAR, 0)
-
-
-def test_days_in_month_rejects_month_thirteen() -> None:
-    with pytest.raises(InvalidDateError):
-        days_in_month(MIN_BS_YEAR, 13)
+@pytest.mark.parametrize(
+    ("year", "month", "exc", "match"),
+    [
+        (MIN_BS_YEAR - 1, 1, DateOutOfRangeError, "outside the bundled range"),
+        (MAX_BS_YEAR + 1, 1, DateOutOfRangeError, "outside the bundled range"),
+        (MIN_BS_YEAR, 0, InvalidDateError, r"outside \[1, 12\]"),
+        (MIN_BS_YEAR, 13, InvalidDateError, r"outside \[1, 12\]"),
+    ],
+    ids=["year_below", "year_above", "month_zero", "month_thirteen"],
+)
+def test_days_in_month_rejects_bad_input(
+    year: int, month: int, exc: type[Exception], match: str
+) -> None:
+    with pytest.raises(exc, match=match):
+        days_in_month(year, month)
 
 
 def test_days_from_anchor_is_zero_at_the_anchor() -> None:
@@ -117,11 +128,66 @@ def test_days_from_anchor_accumulates_across_a_year_boundary() -> None:
     assert days_from_anchor(2001, 1, 1) == 365
 
 
-def test_days_from_anchor_rejects_day_past_month_end() -> None:
-    with pytest.raises(InvalidDateError):
-        days_from_anchor(2000, 1, 31)  # BS 2000 month 1 has only 30 days
+@pytest.mark.parametrize(
+    ("year", "month", "day", "match"),
+    [
+        (2000, 1, 31, r"outside \[1, 30\]"),  # BS 2000 month 1 has only 30 days
+        (MIN_BS_YEAR, 1, 0, r"outside \[1,"),
+    ],
+    ids=["day_past_month_end", "day_zero"],
+)
+def test_days_from_anchor_rejects_bad_day(year: int, month: int, day: int, match: str) -> None:
+    with pytest.raises(InvalidDateError, match=match):
+        days_from_anchor(year, month, day)
 
 
-def test_days_from_anchor_rejects_day_zero() -> None:
-    with pytest.raises(InvalidDateError):
-        days_from_anchor(MIN_BS_YEAR, 1, 0)
+class _StubResource:
+    """Stands in for the importlib.resources.files(...).joinpath(...) chain."""
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def joinpath(self, name: str) -> Self:
+        assert name == "calendar.json"
+        return self
+
+    def read_text(self, *, encoding: str) -> str:
+        return self._text
+
+
+@pytest.mark.parametrize(
+    ("payload", "match"),
+    [
+        ("not json", "is not valid JSON"),
+        ({}, "non-empty list"),
+        ([], "non-empty list"),
+        ([{"year": 2000}], "malformed"),
+        ([{"year": 2000, "months": "not-a-list"}], "malformed"),
+        ([{"year": "2000", "months": [30] * 12}], "malformed"),
+        ([{"year": 2000, "months": [30] * 11 + ["x"]}], "malformed"),
+        # These two clear every _load_years parsing check — valid JSON, a list, a
+        # dict with both keys, year an int, months a list of ints — so only
+        # BSYearData.__post_init__ can reject them. If the loader ever starts
+        # building something other than a real BSYearData, these are what catch it.
+        ([{"year": 2000, "months": [30] * 11}], "expected 12 months, got 11"),
+        ([{"year": 2000, "months": [29] * 12}], "year totals 348 days"),
+    ],
+    ids=[
+        "invalid_json_syntax",
+        "not_a_list",
+        "empty_list",
+        "row_missing_months",
+        "months_not_a_list",
+        "year_not_int",
+        "month_not_int",
+        "row_fails_month_count_invariant",
+        "row_fails_year_total_invariant",
+    ],
+)
+def test_load_years_rejects_bad_calendar_json(
+    monkeypatch: pytest.MonkeyPatch, payload: object, match: str
+) -> None:
+    raw_json = payload if isinstance(payload, str) else json.dumps(payload)
+    monkeypatch.setattr(resources, "files", lambda package: _StubResource(raw_json))
+    with pytest.raises(CalendarDataError, match=match):
+        calendar_data._load_years()
