@@ -1,11 +1,10 @@
 # nepkit
 
-Typed Bikram Sambat ↔ Gregorian date conversion for Python, as a library and
-(eventually) a CLI.
+Typed Bikram Sambat ↔ Gregorian date conversion for Python, as a library and a
+command-line tool.
 
-> **Status:** the conversion library works and is tested. The `nepkit` CLI is
-> wired up but exposes no commands yet, and there is no PyPI release — install
-> from source for now.
+> **Status:** library and CLI both work and are tested. There is no PyPI
+> release yet — install from source.
 
 ## Why
 
@@ -34,7 +33,7 @@ uv sync
 
 There is no published package yet, so `pip install nepkit` will not work.
 
-## Usage
+## Library
 
 ```python
 from datetime import date
@@ -78,14 +77,130 @@ reasonably catch that and fall back or report the supported range. BS 2081-13-01
 is not a date at all, and catching it is always a mistake. Catch `DateError` if
 you only need "the user gave me something I can't convert".
 
-### CLI
+## CLI
 
 ```bash
-uv run nepkit --help
+uv tool install git+https://github.com/akakritagya/nepkit   # or: uv run nepkit
 ```
 
-The entry point exists but has no commands yet; `nepkit date` conversion is the
-first one planned.
+```bash
+$ nepkit bs2ad 2081-04-15
+2024-07-30
+
+$ nepkit ad2bs 2024-07-30
+2081-04-15
+
+$ nepkit today
+BS 2083-04-26
+AD 2026-08-11
+
+$ nepkit range
+BS 2000-01-01 .. 2090-12-30  (years 2000-2090)
+AD 1943-04-14 .. 2034-04-13
+```
+
+Direction is always explicit, and has to be: the BS and AD year numbers overlap
+from 2000 to 2034, so `2024` is a valid year in both calendars and nothing
+could reliably guess which one you meant.
+
+### Interactive
+
+Run `nepkit` with no arguments in a terminal and it opens a session:
+
+```
+$ nepkit
+nepkit 0.1.0 - Bikram Sambat <-> Gregorian
+Type a command, 'help', or 'quit'.
+
+nepkit> today
+BS 2083-04-26
+AD 2026-08-11
+
+nepkit> bs2ad 2081-04-15
+2024-07-30
+
+nepkit> quit
+```
+
+It accepts exactly the commands above — the same table, not a parallel
+interface — so anything you can type at the shell works here unchanged. A bad
+line reports the error and returns you to the prompt rather than ending the
+session. `quit`, `exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current
+line only.
+
+Up and Down recall previous commands, and the usual `readline` editing keys
+work (Ctrl-A, Ctrl-E, Ctrl-R, and so on). History lasts for the session and is
+not written to disk. On Windows, where Python ships no `readline`, the prompt
+works exactly the same minus the editing keys.
+
+**Only on a terminal.** With stdin redirected — a pipeline, a script, CI —
+`nepkit` prints help and exits 2 exactly as before, so nothing ever blocks
+waiting for a prompt that isn't there.
+
+### Calendars
+
+```bash
+$ nepkit calbs 2081 4
+        Shrawan 2081
+    16 Jul - 16 Aug 2024
+Sun Mon Tue Wed Thu Fri Sat
+          1   2   3   4   5
+  6   7   8   9  10  11  12
+ 13  14  15  16  17  18  19
+ 20  21  22  23  24  25  26
+ 27  28  29  30  31  32
+
+$ nepkit calad 2024 7
+         July 2024
+Ashadh 17 - Shrawan 16, 2081
+Sun Mon Tue Wed Thu Fri Sat
+      1   2   3   4   5   6
+  7   8   9  10  11  12  13
+ 14  15  16  17  18  19  20
+ 21  22  23  24  25  26  27
+ 28  29  30  31
+```
+
+Both default to the current month. A Gregorian month never lines up with a BS
+month, so the subtitle names both ends of the span rather than pretending a
+single corresponding month exists.
+
+Grids are boxed and coloured on a terminal and plain when redirected, following
+the same convention as `ls` and `git`. Force it either way with
+`--color always|never|auto`.
+
+On a terminal, today's date is picked out in bold bright magenta. The highlight
+exists **only** in the coloured path: piped output is byte-for-byte
+identical whether or not today falls in the month shown, so nothing parsing
+stdout breaks on the one day a month it would otherwise appear. `--json`
+reports it as a `today` field instead, which is `null` when today is elsewhere.
+
+### Scripting
+
+Every command takes `--json`:
+
+```bash
+$ nepkit ad2bs 2008-05-28 --json
+{"bs": "2065-02-15", "ad": "2008-05-28"}
+```
+
+**stdout carries results, stderr carries errors, and neither ever carries
+both.** stdout contains no ANSI escapes unless you ask for colour explicitly,
+so piping is always safe.
+
+Exit codes come straight from the exception hierarchy, so a script can branch
+without parsing any text:
+
+| Code | Meaning | Example |
+|---|---|---|
+| 0 | success | |
+| 2 | usage error — bad flag or unknown command | `nepkit nosuchcommand` |
+| 3 | not a real date | `nepkit bs2ad 2081-13-01` |
+| 4 | a real date, but outside the bundled range | `nepkit bs2ad 2095-01-01` |
+
+The 3/4 split is the one that matters when scripting: **4 is worth retrying
+against another source, 3 never is.** Collapsing both into `1` would throw that
+distinction away at exactly the boundary where it is most useful.
 
 ## Supported range
 
