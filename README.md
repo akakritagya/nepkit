@@ -12,6 +12,11 @@
 Typed Bikram Sambat ↔ Gregorian date conversion for Python, as a library and a
 command-line tool.
 
+[![CI](https://github.com/akakritagya/nepkit/actions/workflows/ci.yml/badge.svg)](https://github.com/akakritagya/nepkit/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/nepkit)](https://pypi.org/project/nepkit/)
+[![Python](https://img.shields.io/pypi/pyversions/nepkit)](https://pypi.org/project/nepkit/)
+[![License](https://img.shields.io/pypi/l/nepkit)](https://github.com/akakritagya/nepkit/blob/main/LICENSE)
+
 > **Status:** first release. The library and CLI both work and are tested; the
 > API may still change before 1.0.
 

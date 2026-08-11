@@ -41,8 +41,10 @@ jobs:
       - name: Install
         run: uv sync --group dev
 
-      # The same gate that runs before every push locally. A tag should never
-      # be able to publish artifacts that the test suite would have rejected.
+      # Deliberately repeated from ci.yml. CI proves the commit was green; this
+      # proves the artifact about to be uploaded is. A tag should never be able
+      # to publish something the suite would have rejected, and PyPI does not
+      # let you take a release back.
       - name: Test
         run: uv run pytest
       - name: Lint
