@@ -75,7 +75,7 @@ by construction — Python's own constructor rejects it before nepkit is involve
 
 ### Errors
 
-```
+```text
 NepkitError
 ├── CalendarDataError   the bundled table is malformed; raised at import
 └── DateError
@@ -95,7 +95,7 @@ you only need "the user gave me something I can't convert".
 uv tool install git+https://github.com/akakritagya/nepkit   # or: uv run nepkit
 ```
 
-```bash
+```console
 $ nepkit bs2ad 2081-04-15
 2024-07-30
 
@@ -120,7 +120,7 @@ could reliably guess which one you meant.
 Run `nepkit` with no arguments in a terminal and it clears the screen and opens
 a session:
 
-```
+```console
 $ nepkit
                       _     _  _
  _ __    ___   _ __  | | __(_)| |_
@@ -163,7 +163,7 @@ waiting for a prompt that isn't there.
 
 ### Calendars
 
-```bash
+```console
 $ nepkit calbs 2081 4
         Shrawan 2081
     16 Jul - 16 Aug 2024
@@ -203,7 +203,7 @@ reports it as a `today` field instead, which is `null` when today is elsewhere.
 
 Every command takes `--json`:
 
-```bash
+```console
 $ nepkit ad2bs 2008-05-28 --json
 {"bs": "2065-02-15", "ad": "2008-05-28"}
 ```
@@ -216,7 +216,7 @@ Exit codes come straight from the exception hierarchy, so a script can branch
 without parsing any text:
 
 | Code | Meaning | Example |
-|---|---|---|
+| --- | --- | --- |
 | 0 | success | |
 | 2 | usage error — bad flag or unknown command | `nepkit nosuchcommand` |
 | 3 | not a real date | `nepkit bs2ad 2081-13-01` |
@@ -228,8 +228,8 @@ distinction away at exactly the boundary where it is most useful.
 
 ## Supported range
 
-| | From | To |
-|---|---|---|
+| Calendar | From | To |
+| --- | --- | --- |
 | Bikram Sambat | 2000-01-01 | 2090-12-30 |
 | Gregorian | 1943-04-14 | 2034-04-13 |
 
