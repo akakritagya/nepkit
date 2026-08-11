@@ -128,6 +128,11 @@ line reports the error and returns you to the prompt rather than ending the
 session. `quit`, `exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current
 line only.
 
+Up and Down recall previous commands, and the usual `readline` editing keys
+work (Ctrl-A, Ctrl-E, Ctrl-R, and so on). History lasts for the session and is
+not written to disk. On Windows, where Python ships no `readline`, the prompt
+works exactly the same minus the editing keys.
+
 **Only on a terminal.** With stdin redirected — a pipeline, a script, CI —
 `nepkit` prints help and exits 2 exactly as before, so nothing ever blocks
 waiting for a prompt that isn't there.

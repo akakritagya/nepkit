@@ -97,6 +97,34 @@ def test_bare_invocation_on_a_terminal_starts_a_repl(monkeypatch: pytest.MonkeyP
     assert "2024-07-30" in result.stdout  # the conversion
 
 
+def test_line_editing_is_available_on_this_platform() -> None:
+    """readline ships with CPython everywhere except Windows."""
+    assert cli._enable_line_editing() is True
+
+
+def test_the_banner_advertises_history_when_line_editing_is_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_enable_line_editing", lambda: True)
+    result = runner.invoke(cli.app, [], input="quit\n")
+    assert "Up/Down" in result.stdout
+
+
+def test_the_repl_still_works_without_readline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows has no readline. The prompt must degrade, not fail.
+
+    Nothing about dispatch depends on line editing, so losing it should cost
+    the history hint and nothing else.
+    """
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_enable_line_editing", lambda: False)
+    result = runner.invoke(cli.app, [], input="bs2ad 2081-04-15\nquit\n")
+    assert result.exit_code == 0
+    assert "2024-07-30" in result.stdout
+    assert "Up/Down" not in result.stdout
+
+
 @pytest.mark.parametrize("word", ["quit", "exit", "q"], ids=["quit", "exit", "q"])
 def test_the_repl_leaves_on_any_quit_word(monkeypatch: pytest.MonkeyPatch, word: str) -> None:
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)

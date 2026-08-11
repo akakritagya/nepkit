@@ -56,6 +56,7 @@ app = typer.Typer(
 
 _PROMPT: Final[str] = "nepkit> "
 _QUIT_WORDS: Final[frozenset[str]] = frozenset({"quit", "exit", "q"})
+_HISTORY_LENGTH: Final[int] = 1000
 
 
 class ColorMode(StrEnum):
@@ -76,6 +77,24 @@ def _stdin_is_interactive() -> bool:
     return sys.stdin.isatty()
 
 
+def _enable_line_editing() -> bool:
+    """Give input() cursor keys and history by importing readline.
+
+    The import *is* the mechanism: readline hooks itself into input(), so
+    Up/Down recall and Ctrl-A/Ctrl-E editing arrive without another line of
+    code. It only engages on a real terminal, which is why no test can observe
+    the recall itself.
+
+    Absent on Windows, where the prompt keeps working without editing.
+    """
+    try:
+        import readline
+    except ImportError:
+        return False
+    readline.set_history_length(_HISTORY_LENGTH)
+    return True
+
+
 def _dispatch(line: str) -> None:
     """Run one REPL line through the same command table the shell uses.
 
@@ -92,8 +111,10 @@ def _dispatch(line: str) -> None:
 
 
 def _run_repl() -> None:
+    editing = _enable_line_editing()
+    hint = "  Up/Down recalls history." if editing else ""
     typer.echo(f"nepkit {version('nepkit')} - Bikram Sambat <-> Gregorian")
-    typer.echo("Type a command, 'help', or 'quit'.")
+    typer.echo(f"Type a command, 'help', or 'quit'.{hint}")
     while True:
         try:
             line = input(_PROMPT).strip()
