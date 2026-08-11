@@ -119,7 +119,7 @@ nepkit v0.1.0 - Bikram Sambat <-> Gregorian date conversion
 Today  BS 2083-04-26   AD 2026-08-11
 Range  BS 2000-01-01 .. 2090-12-30   AD 1943-04-14 .. 2034-04-13
 
-Type a command, 'help', or 'quit'.  Up/Down recalls history.
+Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
 BS 2083-04-26
@@ -134,8 +134,11 @@ nepkit> quit
 It accepts exactly the commands above — the same table, not a parallel
 interface — so anything you can type at the shell works here unchanged. A bad
 line reports the error and returns you to the prompt rather than ending the
-session. `quit`, `exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current
-line only.
+session. `clear` (or `cls`) wipes the screen and redraws the banner. `quit`,
+`exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current line only.
+
+Those four are prompt-only words, not subcommands — `nepkit clear` at a shell
+stays a usage error rather than clearing your terminal.
 
 Up and Down recall previous commands, and the usual `readline` editing keys
 work (Ctrl-A, Ctrl-E, Ctrl-R, and so on). History lasts for the session and is

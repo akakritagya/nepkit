@@ -65,6 +65,9 @@ _ASCII_TITLE: Final[str] = r"""
 
 _PROMPT: Final[str] = "nepkit> "
 _QUIT_WORDS: Final[frozenset[str]] = frozenset({"quit", "exit", "q"})
+# Prompt-only words. They are not subcommands because they mean nothing outside
+# a session -- `nepkit clear` should stay a usage error, not clear your screen.
+_CLEAR_WORDS: Final[frozenset[str]] = frozenset({"clear", "cls"})
 _HISTORY_LENGTH: Final[int] = 1000
 
 
@@ -152,7 +155,7 @@ def _print_banner(*, editing: bool) -> None:
     )
     hint = "  Up/Down recalls history." if editing else ""
     console.print(
-        f"\n[dim]Type a command, 'help', or 'quit'.{hint}[/dim]",
+        f"\n[dim]Type a command, 'help', 'clear', or 'quit'.{hint}[/dim]",
         soft_wrap=True,
         highlight=False,
     )
@@ -160,7 +163,8 @@ def _print_banner(*, editing: bool) -> None:
 
 
 def _run_repl() -> None:
-    _print_banner(editing=_enable_line_editing())
+    editing = _enable_line_editing()
+    _print_banner(editing=editing)
     while True:
         try:
             line = input(_PROMPT).strip()
@@ -172,9 +176,14 @@ def _run_repl() -> None:
             continue
         if not line:
             continue
-        if line.lower() in _QUIT_WORDS:
+        word = line.lower()
+        if word in _QUIT_WORDS:
             return
-        _dispatch("--help" if line.lower() == "help" else line)
+        if word in _CLEAR_WORDS:
+            Console().clear()
+            _print_banner(editing=editing)
+            continue
+        _dispatch("--help" if word == "help" else line)
 
 
 @app.callback(invoke_without_command=True)
