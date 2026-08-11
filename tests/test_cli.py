@@ -127,6 +127,25 @@ def test_the_banner_survives_a_clock_outside_the_supported_range(
     assert "2024-07-30" in result.stdout, "the session did not work"
 
 
+def test_the_repl_wipes_the_screen_before_drawing_the_banner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wipes: list[int] = []
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_clear_screen", lambda: wipes.append(1))
+    runner.invoke(cli.app, [], input="quit\n")
+    assert len(wipes) == 1, "the screen was not wiped on startup"
+
+
+def test_clear_goes_through_the_same_screen_wipe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Startup and `clear` should not drift into two different ways of doing this."""
+    wipes: list[int] = []
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_clear_screen", lambda: wipes.append(1))
+    runner.invoke(cli.app, [], input="clear\nquit\n")
+    assert len(wipes) == 2
+
+
 @pytest.mark.parametrize("word", ["clear", "cls", "CLEAR"], ids=["clear", "cls", "uppercase"])
 def test_clear_redraws_the_banner(monkeypatch: pytest.MonkeyPatch, word: str) -> None:
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)

@@ -156,8 +156,18 @@ def _print_banner(*, editing: bool) -> None:
     console.print()
 
 
+def _clear_screen() -> None:
+    """Wipe the terminal.
+
+    A no-op when stdout is redirected, so a session whose output is being
+    captured never has escape sequences written into the capture.
+    """
+    Console().clear()
+
+
 def _run_repl() -> None:
     editing = _enable_line_editing()
+    _clear_screen()
     _print_banner(editing=editing)
     while True:
         try:
@@ -174,7 +184,7 @@ def _run_repl() -> None:
         if word in _QUIT_WORDS:
             return
         if word in _CLEAR_WORDS:
-            Console().clear()
+            _clear_screen()
             _print_banner(editing=editing)
             continue
         _dispatch("--help" if word == "help" else line)
