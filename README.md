@@ -6,6 +6,9 @@ command-line tool.
 > **Status:** library and CLI both work and are tested. There is no PyPI
 > release yet — install from source.
 
+[**DEMO.md**](DEMO.md) walks through every command, option, and failure mode
+with real captured output.
+
 ## Why
 
 Bikram Sambat is Nepal's official calendar, and converting to and from it is not
