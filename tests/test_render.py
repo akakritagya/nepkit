@@ -4,11 +4,22 @@ These are pure functions on purpose: the layout logic is the part most likely
 to be wrong, and it should be testable without a CliRunner or a terminal.
 """
 
+from datetime import date
+
 import pytest
 
 from nepkit.calendar_data import BS_MONTH_NAMES
+from nepkit.convert import BSDate
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
-from nepkit.render import WEEKDAY_HEADER, ad_month_grid, bs_month_grid, render_plain
+from nepkit.render import (
+    TODAY_STYLE,
+    WEEKDAY_HEADER,
+    ad_month_grid,
+    bs_month_grid,
+    render_body,
+    render_body_markup,
+    render_plain,
+)
 
 
 def test_there_are_twelve_bs_month_names_in_calendar_order() -> None:
@@ -61,6 +72,52 @@ def test_render_plain_centres_the_headings_over_the_week_columns() -> None:
 
 def test_render_plain_emits_no_ansi_escapes() -> None:
     assert "\x1b[" not in render_plain(ad_month_grid(2024, 7))
+
+
+def test_a_grid_marks_today_when_today_falls_inside_it() -> None:
+    grid = bs_month_grid(2081, 4, today=BSDate(2081, 4, 15))
+    assert grid.today == 15
+
+
+@pytest.mark.parametrize(
+    "today",
+    [BSDate(2081, 5, 1), BSDate(2081, 3, 30), BSDate(2080, 4, 15), None],
+    ids=["next_month", "previous_month", "same_month_other_year", "not_supplied"],
+)
+def test_a_grid_marks_nothing_when_today_falls_elsewhere(today: BSDate | None) -> None:
+    assert bs_month_grid(2081, 4, today=today).today is None
+
+
+def test_ad_grid_marks_today_too() -> None:
+    assert ad_month_grid(2024, 7, today=date(2024, 7, 4)).today == 4
+    assert ad_month_grid(2024, 7, today=date(2024, 8, 4)).today is None
+
+
+def test_render_body_markup_styles_only_todays_cell() -> None:
+    grid = bs_month_grid(2081, 4, today=BSDate(2081, 4, 15))
+    body = render_body_markup(grid)
+    # The whole padded cell is wrapped, so the highlight reads as a solid block
+    # the same width as every other cell rather than hugging the digits.
+    assert f"[{TODAY_STYLE}] 15[/]" in body
+    assert f"[{TODAY_STYLE}] 14[/]" not in body
+    assert body.count(f"[{TODAY_STYLE}]") == 1
+
+
+def test_render_body_markup_is_unstyled_when_today_is_absent() -> None:
+    body = render_body_markup(bs_month_grid(2081, 4))
+    assert TODAY_STYLE not in body
+    assert body == render_body(bs_month_grid(2081, 4))
+
+
+def test_plain_rendering_is_byte_identical_whether_or_not_today_is_known() -> None:
+    """Piped output must not change shape just because the clock moved.
+
+    Anything parsing stdout would break on a marker appearing for one day a
+    month, so the highlight lives only in the markup path.
+    """
+    with_today = render_plain(bs_month_grid(2081, 4, today=BSDate(2081, 4, 15)))
+    without = render_plain(bs_month_grid(2081, 4))
+    assert with_today == without
 
 
 @pytest.mark.parametrize(

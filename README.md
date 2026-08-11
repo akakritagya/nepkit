@@ -134,6 +134,13 @@ Grids are boxed and coloured on a terminal and plain when redirected, following
 the same convention as `ls` and `git`. Force it either way with
 `--color always|never|auto`.
 
+On a terminal, today's cell is picked out in reverse-video magenta — the whole
+three-column cell, so it reads as a solid block rather than hugging the digits.
+The highlight exists **only** in the coloured path: piped output is byte-for-byte
+identical whether or not today falls in the month shown, so nothing parsing
+stdout breaks on the one day a month it would otherwise appear. `--json`
+reports it as a `today` field instead, which is `null` when today is elsewhere.
+
 ### Scripting
 
 Every command takes `--json`:

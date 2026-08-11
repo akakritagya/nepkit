@@ -11,6 +11,7 @@ The contract these tests pin down:
 """
 
 import json
+import re
 from datetime import date
 
 import pytest
@@ -160,6 +161,52 @@ def test_colour_can_be_forced_on_and_off() -> None:
     assert "╭" in forced.stdout
     assert "\x1b[" not in never.stdout
     assert "╭" not in never.stdout
+
+
+def test_todays_cell_is_highlighted_when_colour_is_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))  # = BS 2081-04-15
+    out = runner.invoke(cli.app, ["calbs", "2081", "4", "--color", "always"]).stdout
+    assert re.search(r"\x1b\[[0-9;]*m 15\x1b\[0m", out), "today's cell is not wrapped in a style"
+    assert len(re.findall(r"\x1b\[[0-9;]*m 1[0-9]\x1b\[0m", out)) == 1, "more than one day styled"
+
+
+def test_a_month_without_today_in_it_highlights_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    out = runner.invoke(cli.app, ["calbs", "2081", "6", "--color", "always"]).stdout
+    assert not re.search(r"\x1b\[[0-9;]*m *\d+\x1b\[0m", out)
+
+
+def test_plain_output_is_identical_whether_or_not_today_is_in_the_month(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A marker appearing for one day a month would break anything parsing stdout."""
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))  # inside Shrawan 2081
+    inside = runner.invoke(cli.app, ["calbs", "2081", "4"]).stdout
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 1, 1))  # outside it
+    outside = runner.invoke(cli.app, ["calbs", "2081", "4"]).stdout
+    assert inside == outside
+    assert "\x1b[" not in inside
+
+
+def test_calbs_json_reports_which_day_is_today(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+
+    def today_field(year: str, month: str) -> object:
+        result = runner.invoke(cli.app, ["calbs", year, month, "--json"])
+        return json.loads(result.stdout)["today"]
+
+    assert today_field("2081", "4") == 15  # today is Shrawan 15
+    assert today_field("2081", "6") is None
+
+
+def test_the_coloured_panel_does_not_truncate_a_long_subtitle() -> None:
+    """A subtitle wider than the grid used to get clipped by the panel border.
+
+    'Ashadh 17 - Shrawan 16, 2081' is 28 characters against a 27-wide grid, so
+    rendering it as panel furniture silently ate the year.
+    """
+    out = runner.invoke(cli.app, ["calad", "2024", "7", "--color", "always"]).stdout
+    assert "Ashadh 17 - Shrawan 16, 2081" in re.sub(r"\x1b\[[0-9;]*m", "", out)
 
 
 def test_calbs_json_describes_the_grid_without_drawing_it() -> None:

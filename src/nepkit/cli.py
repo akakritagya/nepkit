@@ -31,7 +31,14 @@ from rich.panel import Panel
 from nepkit.calendar_data import MAX_BS_YEAR, MIN_BS_YEAR
 from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
-from nepkit.render import MonthGrid, ad_month_grid, bs_month_grid, render_body, render_plain
+from nepkit.render import (
+    WEEKDAY_HEADER,
+    MonthGrid,
+    ad_month_grid,
+    bs_month_grid,
+    render_body_markup,
+    render_plain,
+)
 
 EXIT_INVALID_DATE: Final[int] = 3
 EXIT_OUT_OF_RANGE: Final[int] = 4
@@ -109,6 +116,7 @@ def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -
                     "calendar": kind,
                     "title": grid.title,
                     "subtitle": grid.subtitle,
+                    "today": grid.today,
                     "weeks": [list(week) for week in grid.weeks],
                 }
             )
@@ -117,16 +125,17 @@ def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -
 
     coloured = color is ColorMode.always or (color is ColorMode.auto and Console().is_terminal)
     if not coloured:
+        # render_plain, never render_body_markup: piped output stays inert, so a
+        # grid does not change shape on the one day a month today falls in it.
         typer.echo(render_plain(grid))
         return
 
+    # The subtitle goes inside the panel, not in its border: panel furniture is
+    # clipped to the body width, and a span like "Ashadh 17 - Shrawan 16, 2081"
+    # is wider than the 27-column grid, so the border ate the year.
+    body = f"[dim]{grid.subtitle.center(len(WEEKDAY_HEADER))}[/dim]\n{render_body_markup(grid)}"
     Console(force_terminal=True).print(
-        Panel.fit(
-            render_body(grid),
-            title=f"[bold]{grid.title}[/bold]",
-            subtitle=f"[dim]{grid.subtitle}[/dim]",
-            border_style="cyan",
-        )
+        Panel.fit(body, title=f"[bold]{grid.title}[/bold]", border_style="cyan")
     )
 
 
@@ -205,10 +214,15 @@ def calbs_command(
 ) -> None:
     """Display a Bikram Sambat month."""
     with _reported_as_exit_code():
+        current = ad_to_bs(_today()) if MIN_AD_DATE <= _today() <= MAX_AD_DATE else None
         if year is None or month is None:
-            current = ad_to_bs(_today())
+            if current is None:
+                raise DateOutOfRangeError(
+                    f"today ({_today().isoformat()}) is outside the convertible window, "
+                    "so there is no current BS month to default to"
+                )
             year, month = year or current.year, month or current.month
-        grid = bs_month_grid(year, month)
+        grid = bs_month_grid(year, month, today=current)
     _emit_grid(grid, "bs", as_json=as_json, color=color)
 
 
@@ -222,5 +236,5 @@ def calad_command(
     """Display a Gregorian month."""
     with _reported_as_exit_code():
         today = _today()
-        grid = ad_month_grid(year or today.year, month or today.month)
+        grid = ad_month_grid(year or today.year, month or today.month, today=today)
     _emit_grid(grid, "ad", as_json=as_json, color=color)

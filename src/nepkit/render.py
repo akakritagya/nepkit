@@ -18,6 +18,10 @@ WEEKDAY_HEADER: Final[str] = "Sun Mon Tue Wed Thu Fri Sat"
 _DAYS_PER_WEEK: Final[int] = 7
 _CELL_WIDTH: Final[int] = 3
 
+# Reverse video makes the whole 3-wide cell a solid block, the way cal(1)
+# marks today; the colour is what stops it reading as a selection artefact.
+TODAY_STYLE: Final[str] = "reverse bold magenta"
+
 
 @dataclass(frozen=True, slots=True)
 class MonthGrid:
@@ -26,6 +30,8 @@ class MonthGrid:
     title: str
     subtitle: str
     weeks: tuple[tuple[int | None, ...], ...]
+    today: int | None = None
+    """Day of this month to highlight, or None when today falls outside it."""
 
 
 def _sunday_first_index(day: date) -> int:
@@ -43,22 +49,28 @@ def _build_weeks(lead_blanks: int, total_days: int) -> tuple[tuple[int | None, .
     )
 
 
-def bs_month_grid(year: int, month: int) -> MonthGrid:
-    """Lay out a Bikram Sambat month, cross-referenced to the Gregorian dates it spans."""
+def bs_month_grid(year: int, month: int, *, today: BSDate | None = None) -> MonthGrid:
+    """Lay out a Bikram Sambat month, cross-referenced to the Gregorian dates it spans.
+
+    `today` is passed in rather than read from the clock so this stays pure and
+    the caller keeps one seam for the current date.
+    """
     first_bs = BSDate(year=year, month=month, day=1)  # validates year and month
     total_days = days_in_month(year, month)
     first_ad = bs_to_ad(first_bs)
     last_ad = first_ad + timedelta(days=total_days - 1)
 
     span = f"{first_ad.strftime('%d %b')} - {last_ad.strftime('%d %b %Y')}"
+    marked = today.day if today is not None and (today.year, today.month) == (year, month) else None
     return MonthGrid(
         title=f"{BS_MONTH_NAMES[month - 1]} {year}",
         subtitle=span,
         weeks=_build_weeks(_sunday_first_index(first_ad), total_days),
+        today=marked,
     )
 
 
-def ad_month_grid(year: int, month: int) -> MonthGrid:
+def ad_month_grid(year: int, month: int, *, today: date | None = None) -> MonthGrid:
     """Lay out a Gregorian month, cross-referenced to the BS months it spans.
 
     A Gregorian month never lines up with a BS month, so the subtitle names
@@ -84,22 +96,44 @@ def ad_month_grid(year: int, month: int) -> MonthGrid:
     years = (
         str(first_bs.year) if first_bs.year == last_bs.year else f"{first_bs.year}/{last_bs.year}"
     )
+    marked = today.day if today is not None and (today.year, today.month) == (year, month) else None
     return MonthGrid(
         title=f"{calendar.month_name[month]} {year}",
         subtitle=f"{start} - {end}, {years}",
         weeks=_build_weeks(_sunday_first_index(first_ad), total_days),
+        today=marked,
     )
 
 
+def _cell(day: int | None) -> str:
+    return f"{day:>{_CELL_WIDTH}}" if day is not None else " " * _CELL_WIDTH
+
+
+def _rows(grid: MonthGrid, *, mark_today: bool) -> list[str]:
+    rows: list[str] = []
+    for week in grid.weeks:
+        cells = [
+            f"[{TODAY_STYLE}]{_cell(day)}[/]"
+            if mark_today and day is not None and day == grid.today
+            else _cell(day)
+            for day in week
+        ]
+        rows.append(" ".join(cells).rstrip())
+    return rows
+
+
 def render_body(grid: MonthGrid) -> str:
-    """The weekday header and week rows, without the two heading lines."""
-    rows = [
-        " ".join(
-            f"{day:>{_CELL_WIDTH}}" if day is not None else " " * _CELL_WIDTH for day in week
-        ).rstrip()
-        for week in grid.weeks
-    ]
-    return "\n".join([WEEKDAY_HEADER, *rows])
+    """The weekday header and week rows, as plain text with no markup at all."""
+    return "\n".join([WEEKDAY_HEADER, *_rows(grid, mark_today=False)])
+
+
+def render_body_markup(grid: MonthGrid) -> str:
+    """Same grid, with today's cell wrapped in rich markup.
+
+    Kept separate from render_body so the plain path cannot accidentally grow
+    escape sequences: anything piping stdout depends on it staying inert.
+    """
+    return "\n".join([WEEKDAY_HEADER, *_rows(grid, mark_today=True)])
 
 
 def render_plain(grid: MonthGrid) -> str:
