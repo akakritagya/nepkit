@@ -103,7 +103,15 @@ def test_today_uses_the_injectable_clock(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
     result = runner.invoke(cli.app, ["today"])
     assert result.exit_code == 0
-    assert result.stdout == "2081-04-15\n"
+    # Two labelled lines, matching `range`: both commands answer "where are we
+    # in each calendar?" and should not be formatted differently.
+    assert result.stdout == "BS 2081-04-15\nAD 2024-07-30\n"
+
+
+def test_today_json_carries_both_calendars(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    result = runner.invoke(cli.app, ["today", "--json"])
+    assert json.loads(result.stdout) == {"bs": "2081-04-15", "ad": "2024-07-30"}
 
 
 def test_today_exits_4_when_the_clock_is_outside_the_table(

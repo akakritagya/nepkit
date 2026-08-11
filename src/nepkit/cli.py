@@ -177,14 +177,17 @@ def ad_to_bs_command(
 
 @app.command("today")
 def today_command(as_json: JsonOption = False) -> None:
-    """Print today's date in Bikram Sambat."""
+    """Print today's date in both calendars."""
     ad = _today()
     with _reported_as_exit_code():
         bs = ad_to_bs(ad)
     if as_json:
         typer.echo(json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat()}))
-    else:
-        typer.echo(_format_bs(bs))
+        return
+    # Two labelled lines, the same shape `range` prints, so the two commands
+    # that report a position in both calendars read alike.
+    typer.echo(f"BS {_format_bs(bs)}")
+    typer.echo(f"AD {ad.isoformat()}")
 
 
 @app.command("range")
