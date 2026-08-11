@@ -109,7 +109,22 @@ def _cell(day: int | None) -> str:
     return f"{day:>{_CELL_WIDTH}}" if day is not None else " " * _CELL_WIDTH
 
 
+def block_width(grid: MonthGrid) -> int:
+    """How wide the rendered block is: the grid, unless a heading is wider."""
+    return max(len(WEEKDAY_HEADER), len(grid.title), len(grid.subtitle))
+
+
+def _indent(grid: MonthGrid) -> str:
+    """Left pad that centres the week columns under a wider heading.
+
+    Applied identically to every row, including the weekday header, so the
+    columns stay in step however far the block has to shift.
+    """
+    return " " * ((block_width(grid) - len(WEEKDAY_HEADER)) // 2)
+
+
 def _rows(grid: MonthGrid, *, mark_today: bool) -> list[str]:
+    pad = _indent(grid)
     rows: list[str] = []
     for week in grid.weeks:
         cells = [
@@ -118,13 +133,13 @@ def _rows(grid: MonthGrid, *, mark_today: bool) -> list[str]:
             else _cell(day)
             for day in week
         ]
-        rows.append(" ".join(cells).rstrip())
+        rows.append((pad + " ".join(cells)).rstrip())
     return rows
 
 
 def render_body(grid: MonthGrid) -> str:
     """The weekday header and week rows, as plain text with no markup at all."""
-    return "\n".join([WEEKDAY_HEADER, *_rows(grid, mark_today=False)])
+    return "\n".join([_indent(grid) + WEEKDAY_HEADER, *_rows(grid, mark_today=False)])
 
 
 def render_body_markup(grid: MonthGrid) -> str:
@@ -133,12 +148,12 @@ def render_body_markup(grid: MonthGrid) -> str:
     Kept separate from render_body so the plain path cannot accidentally grow
     escape sequences: anything piping stdout depends on it staying inert.
     """
-    return "\n".join([WEEKDAY_HEADER, *_rows(grid, mark_today=True)])
+    return "\n".join([_indent(grid) + WEEKDAY_HEADER, *_rows(grid, mark_today=True)])
 
 
 def render_plain(grid: MonthGrid) -> str:
-    """The whole grid as plain text, centred over the week columns."""
-    width = len(WEEKDAY_HEADER)
+    """The whole grid as plain text, every part centred on the same block."""
+    width = block_width(grid)
     return "\n".join(
         [grid.title.center(width).rstrip(), grid.subtitle.center(width).rstrip(), render_body(grid)]
     )

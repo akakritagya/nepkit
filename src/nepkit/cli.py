@@ -36,9 +36,9 @@ from nepkit.calendar_data import MAX_BS_YEAR, MIN_BS_YEAR
 from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 from nepkit.render import (
-    WEEKDAY_HEADER,
     MonthGrid,
     ad_month_grid,
+    block_width,
     bs_month_grid,
     render_body_markup,
     render_plain,
@@ -51,11 +51,23 @@ _DATE_PARTS: Final[int] = 3
 
 app = typer.Typer(
     name="nepkit",
-    help="Bikram Sambat <-> Gregorian date conversion.",
+    help="Bikram Sambat (BS) <-> Gregorian (AD) date conversion.",
 )
+
+# figlet "standard", composed glyph by glyph so the columns actually line up.
+_ASCII_TITLE: Final[str] = r"""
+                      _     _  _
+ _ __    ___   _ __  | | __(_)| |_
+| '_ \  / _ \ | '_ \ | |/ /| || __|
+| | | ||  __/ | |_) ||   < | || |_
+|_| |_| \___| | .__/ |_|\_\|_| \__|
+              |_|"""
 
 _PROMPT: Final[str] = "nepkit> "
 _QUIT_WORDS: Final[frozenset[str]] = frozenset({"quit", "exit", "q"})
+# Prompt-only words. They are not subcommands because they mean nothing outside
+# a session -- `nepkit clear` should stay a usage error, not clear your screen.
+_CLEAR_WORDS: Final[frozenset[str]] = frozenset({"clear", "cls"})
 _HISTORY_LENGTH: Final[int] = 1000
 
 
@@ -110,11 +122,43 @@ def _dispatch(line: str) -> None:
         typer.echo(f"error: {exc}", err=True)
 
 
+def _today_line() -> str:
+    """Today in both calendars, or a note that it is off the end of the table.
+
+    Decorating the banner must never stop the session from opening, which it
+    would once the clock passes MAX_AD_DATE in 2034.
+    """
+    ad = _today()
+    if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
+        return f"[dim]Today [/dim] AD {ad.isoformat()}  [dim](outside the supported range)[/dim]"
+    return f"[dim]Today [/dim] BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()}"
+
+
+def _print_banner(*, editing: bool) -> None:
+    # A plain Console, not force_terminal: the REPL needs stdin to be a tty but
+    # stdout can still be redirected, and then this should come out unstyled.
+    console = Console()
+    console.print(_ASCII_TITLE, style="bold cyan", markup=False, highlight=False)
+    # Flush left, so the info block lines up with the wordmark's left edge.
+    console.print(
+        f"[bold]nepkit[/bold] [dim]v{version('nepkit')}[/dim] "
+        f"[dim]-[/dim] Bikram Sambat (BS) <-> Gregorian (AD) date conversion",
+        soft_wrap=True,
+        highlight=False,
+    )
+    console.print(_today_line(), soft_wrap=True, highlight=False)
+    hint = "  Up/Down recalls history." if editing else ""
+    console.print(
+        f"\n[dim]Type a command, 'help', 'clear', or 'quit'.{hint}[/dim]",
+        soft_wrap=True,
+        highlight=False,
+    )
+    console.print()
+
+
 def _run_repl() -> None:
     editing = _enable_line_editing()
-    hint = "  Up/Down recalls history." if editing else ""
-    typer.echo(f"nepkit {version('nepkit')} - Bikram Sambat <-> Gregorian")
-    typer.echo(f"Type a command, 'help', or 'quit'.{hint}")
+    _print_banner(editing=editing)
     while True:
         try:
             line = input(_PROMPT).strip()
@@ -126,9 +170,14 @@ def _run_repl() -> None:
             continue
         if not line:
             continue
-        if line.lower() in _QUIT_WORDS:
+        word = line.lower()
+        if word in _QUIT_WORDS:
             return
-        _dispatch("--help" if line.lower() == "help" else line)
+        if word in _CLEAR_WORDS:
+            Console().clear()
+            _print_banner(editing=editing)
+            continue
+        _dispatch("--help" if word == "help" else line)
 
 
 @app.callback(invoke_without_command=True)
@@ -212,7 +261,7 @@ def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -
     # The subtitle goes inside the panel, not in its border: panel furniture is
     # clipped to the body width, and a span like "Ashadh 17 - Shrawan 16, 2081"
     # is wider than the 27-column grid, so the border ate the year.
-    body = f"[dim]{grid.subtitle.center(len(WEEKDAY_HEADER))}[/dim]\n{render_body_markup(grid)}"
+    body = f"[dim]{grid.subtitle.center(block_width(grid))}[/dim]\n{render_body_markup(grid)}"
     Console(force_terminal=True).print(
         Panel.fit(body, title=f"[bold]{grid.title}[/bold]", border_style="cyan")
     )
@@ -278,7 +327,10 @@ def range_command(as_json: JsonOption = False) -> None:
             json.dumps(
                 {
                     "bs": {"min": bs_min, "max": bs_max},
-                    "ad": {"min": MIN_AD_DATE.isoformat(), "max": MAX_AD_DATE.isoformat()},
+                    "ad": {
+                        "min": MIN_AD_DATE.isoformat(),
+                        "max": MAX_AD_DATE.isoformat(),
+                    },
                 }
             )
         )

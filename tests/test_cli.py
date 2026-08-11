@@ -13,6 +13,7 @@ The contract these tests pin down:
 import json
 import re
 from datetime import date
+from importlib.metadata import version
 
 import pytest
 from typer.testing import CliRunner
@@ -95,6 +96,63 @@ def test_bare_invocation_on_a_terminal_starts_a_repl(monkeypatch: pytest.MonkeyP
     assert result.exit_code == 0
     assert "BS 2081-04-15" in result.stdout  # today
     assert "2024-07-30" in result.stdout  # the conversion
+
+
+def test_the_repl_opens_with_an_ascii_title_and_app_info(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    out = runner.invoke(cli.app, [], input="quit\n").stdout
+
+    assert "|_| |_|" in out, "the ascii title is missing"
+    assert version("nepkit") in out
+    assert "Bikram Sambat" in out
+    assert "BS 2081-04-15" in out and "AD 2024-07-30" in out, "today is not shown"
+
+
+def test_the_banner_survives_a_clock_outside_the_supported_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """After 2034-04-13 there is no BS date for today, and the banner still has to open.
+
+    Reading the clock to decorate a banner must never be able to stop the REPL
+    from starting.
+    """
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_today", lambda: date(2040, 1, 1))
+    result = runner.invoke(cli.app, [], input="bs2ad 2081-04-15\nquit\n")
+    assert result.exit_code == 0
+    assert "|_| |_|" in result.stdout
+    assert "2024-07-30" in result.stdout, "the session did not work"
+
+
+@pytest.mark.parametrize("word", ["clear", "cls", "CLEAR"], ids=["clear", "cls", "uppercase"])
+def test_clear_redraws_the_banner(monkeypatch: pytest.MonkeyPatch, word: str) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    out = runner.invoke(cli.app, [], input=f"{word}\nquit\n").stdout
+    # Once at startup, once after clearing.
+    assert out.count("|_| |_|") == 2, "the banner was not redrawn"
+    assert out.count("Today ") == 2, "the info block was not redrawn with it"
+
+
+def test_clear_does_not_end_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    result = runner.invoke(cli.app, [], input="clear\nbs2ad 2081-04-15\nquit\n")
+    assert result.exit_code == 0
+    assert "2024-07-30" in result.stdout
+
+
+def test_clear_is_advertised_in_the_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    out = runner.invoke(cli.app, [], input="quit\n").stdout
+    assert "'clear'" in out
+
+
+def test_clear_is_not_a_shell_subcommand() -> None:
+    """It only means anything at the prompt, so it must not appear as a verb."""
+    assert runner.invoke(cli.app, ["clear"]).exit_code == 2
 
 
 def test_line_editing_is_available_on_this_platform() -> None:

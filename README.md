@@ -109,8 +109,16 @@ Run `nepkit` with no arguments in a terminal and it opens a session:
 
 ```
 $ nepkit
-nepkit 0.1.0 - Bikram Sambat <-> Gregorian
-Type a command, 'help', or 'quit'.
+                      _     _  _
+ _ __    ___   _ __  | | __(_)| |_
+| '_ \  / _ \ | '_ \ | |/ /| || __|
+| | | ||  __/ | |_) ||   < | || |_
+|_| |_| \___| | .__/ |_|\_\|_| \__|
+              |_|
+nepkit v0.1.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+Today  BS 2083-04-26   AD 2026-08-11
+
+Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
 BS 2083-04-26
@@ -125,8 +133,11 @@ nepkit> quit
 It accepts exactly the commands above — the same table, not a parallel
 interface — so anything you can type at the shell works here unchanged. A bad
 line reports the error and returns you to the prompt rather than ending the
-session. `quit`, `exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current
-line only.
+session. `clear` (or `cls`) wipes the screen and redraws the banner. `quit`,
+`exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current line only.
+
+Those four are prompt-only words, not subcommands — `nepkit clear` at a shell
+stays a usage error rather than clearing your terminal.
 
 Up and Down recall previous commands, and the usual `readline` editing keys
 work (Ctrl-A, Ctrl-E, Ctrl-R, and so on). History lasts for the session and is
