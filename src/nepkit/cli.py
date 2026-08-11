@@ -54,6 +54,15 @@ app = typer.Typer(
     help="Bikram Sambat <-> Gregorian date conversion.",
 )
 
+# figlet "standard", composed glyph by glyph so the columns actually line up.
+_ASCII_TITLE: Final[str] = r"""
+                      _     _  _
+ _ __    ___   _ __  | | __(_)| |_
+| '_ \  / _ \ | '_ \ | |/ /| || __|
+| | | ||  __/ | |_) ||   < | || |_
+|_| |_| \___| | .__/ |_|\_\|_| \__|
+              |_|"""
+
 _PROMPT: Final[str] = "nepkit> "
 _QUIT_WORDS: Final[frozenset[str]] = frozenset({"quit", "exit", "q"})
 _HISTORY_LENGTH: Final[int] = 1000
@@ -110,11 +119,47 @@ def _dispatch(line: str) -> None:
         typer.echo(f"error: {exc}", err=True)
 
 
-def _run_repl() -> None:
-    editing = _enable_line_editing()
+def _today_line() -> str:
+    """Today in both calendars, or a note that it is off the end of the table.
+
+    Decorating the banner must never stop the session from opening, which it
+    would once the clock passes MAX_AD_DATE in 2034.
+    """
+    ad = _today()
+    if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
+        return f"[dim]Today [/dim] AD {ad.isoformat()}  [dim](outside the supported range)[/dim]"
+    return f"[dim]Today [/dim] BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()}"
+
+
+def _print_banner(*, editing: bool) -> None:
+    # A plain Console, not force_terminal: the REPL needs stdin to be a tty but
+    # stdout can still be redirected, and then this should come out unstyled.
+    console = Console()
+    console.print(_ASCII_TITLE, style="bold cyan", markup=False, highlight=False)
+    console.print(
+        f"  [bold]nepkit[/bold] [dim]v{version('nepkit')}[/dim] "
+        f"[dim]-[/dim] Bikram Sambat <-> Gregorian date conversion",
+        soft_wrap=True,
+        highlight=False,
+    )
+    console.print(f"  {_today_line()}", soft_wrap=True, highlight=False)
+    console.print(
+        f"  [dim]Range [/dim] BS {MIN_BS_YEAR:04d}-01-01 .. {_format_bs(ad_to_bs(MAX_AD_DATE))}"
+        f"   AD {MIN_AD_DATE.isoformat()} .. {MAX_AD_DATE.isoformat()}",
+        soft_wrap=True,
+        highlight=False,
+    )
     hint = "  Up/Down recalls history." if editing else ""
-    typer.echo(f"nepkit {version('nepkit')} - Bikram Sambat <-> Gregorian")
-    typer.echo(f"Type a command, 'help', or 'quit'.{hint}")
+    console.print(
+        f"\n  [dim]Type a command, 'help', or 'quit'.{hint}[/dim]",
+        soft_wrap=True,
+        highlight=False,
+    )
+    console.print()
+
+
+def _run_repl() -> None:
+    _print_banner(editing=_enable_line_editing())
     while True:
         try:
             line = input(_PROMPT).strip()

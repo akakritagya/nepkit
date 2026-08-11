@@ -109,8 +109,17 @@ Run `nepkit` with no arguments in a terminal and it opens a session:
 
 ```
 $ nepkit
-nepkit 0.1.0 - Bikram Sambat <-> Gregorian
-Type a command, 'help', or 'quit'.
+                      _     _  _
+ _ __    ___   _ __  | | __(_)| |_
+| '_ \  / _ \ | '_ \ | |/ /| || __|
+| | | ||  __/ | |_) ||   < | || |_
+|_| |_| \___| | .__/ |_|\_\|_| \__|
+              |_|
+  nepkit v0.1.0 - Bikram Sambat <-> Gregorian date conversion
+  Today  BS 2083-04-26   AD 2026-08-11
+  Range  BS 2000-01-01 .. 2090-12-30   AD 1943-04-14 .. 2034-04-13
+
+  Type a command, 'help', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
 BS 2083-04-26
