@@ -115,9 +115,8 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.1.0 - Bikram Sambat <-> Gregorian date conversion
+nepkit v0.1.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
 Today  BS 2083-04-26   AD 2026-08-11
-Range  BS 2000-01-01 .. 2090-12-30   AD 1943-04-14 .. 2034-04-13
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 

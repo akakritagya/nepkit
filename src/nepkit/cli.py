@@ -51,7 +51,7 @@ _DATE_PARTS: Final[int] = 3
 
 app = typer.Typer(
     name="nepkit",
-    help="Bikram Sambat <-> Gregorian date conversion.",
+    help="Bikram Sambat (BS) <-> Gregorian (AD) date conversion.",
 )
 
 # figlet "standard", composed glyph by glyph so the columns actually line up.
@@ -142,17 +142,11 @@ def _print_banner(*, editing: bool) -> None:
     # Flush left, so the info block lines up with the wordmark's left edge.
     console.print(
         f"[bold]nepkit[/bold] [dim]v{version('nepkit')}[/dim] "
-        f"[dim]-[/dim] Bikram Sambat <-> Gregorian date conversion",
+        f"[dim]-[/dim] Bikram Sambat (BS) <-> Gregorian (AD) date conversion",
         soft_wrap=True,
         highlight=False,
     )
     console.print(_today_line(), soft_wrap=True, highlight=False)
-    console.print(
-        f"[dim]Range [/dim] BS {MIN_BS_YEAR:04d}-01-01 .. {_format_bs(ad_to_bs(MAX_AD_DATE))}"
-        f"   AD {MIN_AD_DATE.isoformat()} .. {MAX_AD_DATE.isoformat()}",
-        soft_wrap=True,
-        highlight=False,
-    )
     hint = "  Up/Down recalls history." if editing else ""
     console.print(
         f"\n[dim]Type a command, 'help', 'clear', or 'quit'.{hint}[/dim]",
@@ -333,7 +327,10 @@ def range_command(as_json: JsonOption = False) -> None:
             json.dumps(
                 {
                     "bs": {"min": bs_min, "max": bs_max},
-                    "ad": {"min": MIN_AD_DATE.isoformat(), "max": MAX_AD_DATE.isoformat()},
+                    "ad": {
+                        "min": MIN_AD_DATE.isoformat(),
+                        "max": MAX_AD_DATE.isoformat(),
+                    },
                 }
             )
         )

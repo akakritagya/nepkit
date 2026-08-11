@@ -109,7 +109,6 @@ def test_the_repl_opens_with_an_ascii_title_and_app_info(
     assert version("nepkit") in out
     assert "Bikram Sambat" in out
     assert "BS 2081-04-15" in out and "AD 2024-07-30" in out, "today is not shown"
-    assert "2000-01-01" in out and "2034-04-13" in out, "the supported range is not shown"
 
 
 def test_the_banner_survives_a_clock_outside_the_supported_range(
@@ -135,7 +134,7 @@ def test_clear_redraws_the_banner(monkeypatch: pytest.MonkeyPatch, word: str) ->
     out = runner.invoke(cli.app, [], input=f"{word}\nquit\n").stdout
     # Once at startup, once after clearing.
     assert out.count("|_| |_|") == 2, "the banner was not redrawn"
-    assert out.count("Range ") == 2
+    assert out.count("Today ") == 2, "the info block was not redrawn with it"
 
 
 def test_clear_does_not_end_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
