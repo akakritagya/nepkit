@@ -18,9 +18,9 @@ WEEKDAY_HEADER: Final[str] = "Sun Mon Tue Wed Thu Fri Sat"
 _DAYS_PER_WEEK: Final[int] = 7
 _CELL_WIDTH: Final[int] = 3
 
-# Reverse video makes the whole 3-wide cell a solid block, the way cal(1)
-# marks today; the colour is what stops it reading as a selection artefact.
-TODAY_STYLE: Final[str] = "reverse bold magenta"
+# Colours the digits themselves rather than filling the cell background, so the
+# grid keeps an even texture and today reads as one bright number in it.
+TODAY_STYLE: Final[str] = "bold bright_magenta"
 
 
 @dataclass(frozen=True, slots=True)

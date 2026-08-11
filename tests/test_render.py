@@ -96,8 +96,9 @@ def test_ad_grid_marks_today_too() -> None:
 def test_render_body_markup_styles_only_todays_cell() -> None:
     grid = bs_month_grid(2081, 4, today=BSDate(2081, 4, 15))
     body = render_body_markup(grid)
-    # The whole padded cell is wrapped, so the highlight reads as a solid block
-    # the same width as every other cell rather than hugging the digits.
+    # The padding is inside the span, which is harmless for a foreground style
+    # and keeps cell construction uniform. Markup adds no printed width, so
+    # column alignment is unaffected either way.
     assert f"[{TODAY_STYLE}] 15[/]" in body
     assert f"[{TODAY_STYLE}] 14[/]" not in body
     assert body.count(f"[{TODAY_STYLE}]") == 1
