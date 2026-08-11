@@ -37,8 +37,7 @@ to cross-check source A, not as copied code or copied text.
    different epochs, 8 years apart — land on the same date:
    **BS 2000-01-01 = AD 1943-04-14**. A third, independently-computed public
    date-converter tool (unrelated codebase to A or B) states the same
-   pairing. This is the value used for `ANCHOR_BS` / `ANCHOR_AD` in
-   `calendar_data.py`.
+   pairing. This is the value pinned as `ANCHOR` in `calendar_data.py`.
 
 Script used for steps 2–4 was a throwaway (`diff_sources.py`, not checked
 into this repo) — the empty diff and the reconciled table it produced are

@@ -12,10 +12,12 @@ from nepkit.calendar_data import (
     ANCHOR,
     MAX_BS_YEAR,
     MIN_BS_YEAR,
+    TOTAL_DAYS,
     Anchor,
     BSYearData,
     _check_anchor_is_first_day_of_min_year,
     _check_contiguous,
+    bs_from_days,
     days_from_anchor,
     days_in_month,
 )
@@ -139,6 +141,40 @@ def test_days_from_anchor_accumulates_across_a_year_boundary() -> None:
 def test_days_from_anchor_rejects_bad_day(year: int, month: int, day: int, match: str) -> None:
     with pytest.raises(InvalidDateError, match=match):
         days_from_anchor(year, month, day)
+
+
+def test_bs_from_days_returns_the_anchor_at_zero() -> None:
+    assert bs_from_days(0) == (ANCHOR.bs_year, ANCHOR.bs_month, ANCHOR.bs_day)
+
+
+def test_bs_from_days_walks_months_within_a_year() -> None:
+    # BS 2000 month 1 has 30 days, so day 30 is the first day of month 2.
+    assert bs_from_days(30) == (2000, 2, 1)
+
+
+@pytest.mark.parametrize(
+    ("days", "expected"),
+    [
+        (365, (2001, 1, 1)),  # BS 2000 sums to 365, so this is the next year's first day
+        (TOTAL_DAYS - 1, (MAX_BS_YEAR, 12, 30)),  # the very last representable day
+    ],
+    ids=["first_year_boundary", "last_representable_day"],
+)
+def test_bs_from_days_crosses_year_boundaries(days: int, expected: tuple[int, int, int]) -> None:
+    assert bs_from_days(days) == expected
+
+
+@pytest.mark.parametrize(
+    "days",
+    # Unguarded, a negative count bisects to index -1 and walks the *last* year
+    # backwards, returning something like (2090, 1, -32873) with no error at all.
+    # That silent wrong answer is what this guard exists to turn into a raise.
+    [-1, TOTAL_DAYS],
+    ids=["before_anchor", "past_last_day"],
+)
+def test_bs_from_days_rejects_days_outside_the_bundled_span(days: int) -> None:
+    with pytest.raises(DateOutOfRangeError, match=r"outside \[0, 33238\)"):
+        bs_from_days(days)
 
 
 class _StubResource:

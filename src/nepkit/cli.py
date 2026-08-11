@@ -4,11 +4,11 @@ import typer
 
 app = typer.Typer(
     name="nepkit",
-    help="Nepal-specific developer utilities.",
+    help="Bikram Sambat <-> Gregorian date conversion.",
     no_args_is_help=True,
 )
 
 
 @app.callback()
 def main() -> None:
-    """Nepal-specific developer utilities."""
+    """Bikram Sambat <-> Gregorian date conversion."""
