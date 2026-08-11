@@ -1,5 +1,14 @@
 # nepkit
 
+```text
+                      _     _  _
+ _ __    ___   _ __  | | __(_)| |_
+| '_ \  / _ \ | '_ \ | |/ /| || __|
+| | | ||  __/ | |_) ||   < | || |_
+|_| |_| \___| | .__/ |_|\_\|_| \__|
+              |_|
+```
+
 Typed Bikram Sambat ↔ Gregorian date conversion for Python, as a library and a
 command-line tool.
 
