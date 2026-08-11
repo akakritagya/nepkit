@@ -70,6 +70,38 @@ def test_render_plain_centres_the_headings_over_the_week_columns() -> None:
     assert all(len(line) <= len(WEEKDAY_HEADER) for line in rendered)
 
 
+def test_a_subtitle_wider_than_the_grid_centres_the_grid_under_it() -> None:
+    """AD 2026-04 spans 'Chaitra 18 - Baisakh 17, 2082/2083' -- 34 columns to the
+    grid's 27. The block is as wide as the subtitle, so the grid has to move to
+    the middle of it instead of hugging the left edge.
+    """
+    grid = ad_month_grid(2026, 4)
+    assert len(grid.subtitle) > len(WEEKDAY_HEADER), "this month no longer exercises the case"
+
+    lines = render_plain(grid).splitlines()
+    block = max(len(line) for line in lines)
+    header = next(line for line in lines if line.lstrip().startswith("Sun"))
+    left = len(header) - len(header.lstrip())
+    right = block - len(header)
+    assert left > 0, "the grid was not shifted at all"
+    assert abs(left - right) <= 1, f"grid is off centre: {left} left, {right} right"
+
+
+def test_a_grid_wider_than_its_subtitle_is_not_shifted() -> None:
+    """Shrawan 2081's span is 20 columns, well inside the grid, so nothing moves."""
+    lines = render_plain(bs_month_grid(2081, 4)).splitlines()
+    header = next(line for line in lines if line.lstrip().startswith("Sun"))
+    assert header == WEEKDAY_HEADER
+
+
+def test_centring_moves_the_whole_grid_together() -> None:
+    """Every row shifts by the same amount, or the weekday columns stop lining up."""
+    body = render_body(ad_month_grid(2026, 4)).splitlines()
+    pad = len(body[0]) - len(body[0].lstrip())
+    for row in body[1:]:
+        assert row.startswith(" " * pad), f"row does not share the header's indent: {row!r}"
+
+
 def test_render_plain_emits_no_ansi_escapes() -> None:
     assert "\x1b[" not in render_plain(ad_month_grid(2024, 7))
 
