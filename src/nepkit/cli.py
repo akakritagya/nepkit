@@ -18,15 +18,19 @@ one boundary where it is most useful.
 """
 
 import json
+import shlex
+import sys
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from enum import StrEnum
+from importlib.metadata import version
 from typing import Annotated, Final
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from typer.main import get_command
 
 from nepkit.calendar_data import MAX_BS_YEAR, MIN_BS_YEAR
 from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
@@ -48,8 +52,10 @@ _DATE_PARTS: Final[int] = 3
 app = typer.Typer(
     name="nepkit",
     help="Bikram Sambat <-> Gregorian date conversion.",
-    no_args_is_help=True,
 )
+
+_PROMPT: Final[str] = "nepkit> "
+_QUIT_WORDS: Final[frozenset[str]] = frozenset({"quit", "exit", "q"})
 
 
 class ColorMode(StrEnum):
@@ -63,6 +69,58 @@ class ColorMode(StrEnum):
 def _today() -> date:
     """Seam for tests. Patch this rather than the clock itself."""
     return date.today()
+
+
+def _stdin_is_interactive() -> bool:
+    """Seam for tests, and the guard that keeps `nepkit` usable in a pipeline."""
+    return sys.stdin.isatty()
+
+
+def _dispatch(line: str) -> None:
+    """Run one REPL line through the same command table the shell uses.
+
+    standalone_mode=False makes Typer return the exit code instead of calling
+    sys.exit, so a failing command ends the line rather than the session.
+    """
+    try:
+        get_command(app).main(shlex.split(line), prog_name="nepkit", standalone_mode=False)
+    except Exception as exc:
+        # Deliberately broad. A typo must not throw the user out of the session,
+        # and Typer's usage errors live in typer._click.exceptions -- a private
+        # module this should not be importing to name them precisely.
+        typer.echo(f"error: {exc}", err=True)
+
+
+def _run_repl() -> None:
+    typer.echo(f"nepkit {version('nepkit')} - Bikram Sambat <-> Gregorian")
+    typer.echo("Type a command, 'help', or 'quit'.")
+    while True:
+        try:
+            line = input(_PROMPT).strip()
+        except EOFError:  # Ctrl-D
+            typer.echo("")
+            return
+        except KeyboardInterrupt:  # Ctrl-C abandons the line, not the session
+            typer.echo("")
+            continue
+        if not line:
+            continue
+        if line.lower() in _QUIT_WORDS:
+            return
+        _dispatch("--help" if line.lower() == "help" else line)
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context) -> None:
+    """Bikram Sambat <-> Gregorian date conversion."""
+    if ctx.invoked_subcommand is not None:
+        return
+    if not _stdin_is_interactive():
+        # No terminal means no prompt: printing help and exiting 2 keeps the
+        # old behaviour for scripts, which would otherwise block on stdin.
+        typer.echo(ctx.get_help())
+        raise typer.Exit(2)
+    _run_repl()
 
 
 @contextmanager

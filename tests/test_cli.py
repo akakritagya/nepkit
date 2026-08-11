@@ -77,6 +77,62 @@ def test_malformed_input_exits_the_same_way_in_both_directions() -> None:
     assert bs.exit_code == ad.exit_code == 3
 
 
+def test_bare_invocation_without_a_terminal_still_prints_help_and_exits_2() -> None:
+    """A pipeline must never get an interactive prompt.
+
+    Without this guard `nepkit` in a script would block on stdin forever, or
+    silently eat whatever was being piped into it.
+    """
+    result = runner.invoke(cli.app, [])
+    assert result.exit_code == 2
+    assert "Usage:" in result.stdout
+
+
+def test_bare_invocation_on_a_terminal_starts_a_repl(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    result = runner.invoke(cli.app, [], input="today\nbs2ad 2081-04-15\nquit\n")
+    assert result.exit_code == 0
+    assert "BS 2081-04-15" in result.stdout  # today
+    assert "2024-07-30" in result.stdout  # the conversion
+
+
+@pytest.mark.parametrize("word", ["quit", "exit", "q"], ids=["quit", "exit", "q"])
+def test_the_repl_leaves_on_any_quit_word(monkeypatch: pytest.MonkeyPatch, word: str) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    assert runner.invoke(cli.app, [], input=f"{word}\n").exit_code == 0
+
+
+def test_the_repl_leaves_cleanly_on_end_of_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ctrl-D should end the session, not raise EOFError at the user."""
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    result = runner.invoke(cli.app, [], input="")
+    assert result.exit_code == 0
+    assert "Traceback" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "bad_line",
+    ["nosuchcommand", "bs2ad 2095-01-01", "bs2ad not-a-date", "bs2ad", "bs2ad --bogus"],
+    ids=["unknown_verb", "out_of_range", "malformed", "missing_argument", "unknown_flag"],
+)
+def test_a_bad_line_does_not_end_the_repl_session(
+    monkeypatch: pytest.MonkeyPatch, bad_line: str
+) -> None:
+    """A typo must not throw the user out of the session."""
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    result = runner.invoke(cli.app, [], input=f"{bad_line}\nbs2ad 2081-04-15\nquit\n")
+    assert result.exit_code == 0
+    assert "2024-07-30" in result.stdout, "the command after the bad line never ran"
+
+
+def test_blank_lines_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
+    result = runner.invoke(cli.app, [], input="\n\n   \nbs2ad 2081-04-15\nquit\n")
+    assert result.exit_code == 0
+    assert "2024-07-30" in result.stdout
+
+
 def test_an_unknown_command_exits_2_as_a_usage_error() -> None:
     result = runner.invoke(cli.app, ["nosuchcommand"])
     assert result.exit_code == 2

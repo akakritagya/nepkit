@@ -103,6 +103,35 @@ Direction is always explicit, and has to be: the BS and AD year numbers overlap
 from 2000 to 2034, so `2024` is a valid year in both calendars and nothing
 could reliably guess which one you meant.
 
+### Interactive
+
+Run `nepkit` with no arguments in a terminal and it opens a session:
+
+```
+$ nepkit
+nepkit 0.1.0 - Bikram Sambat <-> Gregorian
+Type a command, 'help', or 'quit'.
+
+nepkit> today
+BS 2083-04-26
+AD 2026-08-11
+
+nepkit> bs2ad 2081-04-15
+2024-07-30
+
+nepkit> quit
+```
+
+It accepts exactly the commands above — the same table, not a parallel
+interface — so anything you can type at the shell works here unchanged. A bad
+line reports the error and returns you to the prompt rather than ending the
+session. `quit`, `exit`, `q`, and Ctrl-D all leave; Ctrl-C abandons the current
+line only.
+
+**Only on a terminal.** With stdin redirected — a pipeline, a script, CI —
+`nepkit` prints help and exits 2 exactly as before, so nothing ever blocks
+waiting for a prompt that isn't there.
+
 ### Calendars
 
 ```bash
