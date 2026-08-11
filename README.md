@@ -12,11 +12,11 @@
 Typed Bikram Sambat ↔ Gregorian date conversion for Python, as a library and a
 command-line tool.
 
-> **Status:** library and CLI both work and are tested. There is no PyPI
-> release yet — install from source.
+> **Status:** first release. The library and CLI both work and are tested; the
+> API may still change before 1.0.
 
-[**DEMO.md**](DEMO.md) walks through every command, option, and failure mode
-with real captured output.
+[**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
+through every command, option, and failure mode with real captured output.
 
 ## Why
 
@@ -35,15 +35,16 @@ converter that is explicit about all three.
 
 ## Install
 
-Requires Python 3.12+. This project uses [uv](https://docs.astral.sh/uv/).
+Requires Python 3.12+.
 
 ```bash
-git clone https://github.com/akakritagya/nepkit
-cd nepkit
-uv sync
+pip install nepkit       # library and CLI
+uv add nepkit            # into a uv project
+uv tool install nepkit   # the CLI on its own, isolated
 ```
 
-There is no published package yet, so `pip install nepkit` will not work.
+[Typer](https://typer.tiangolo.com/) is the only direct dependency. The
+calendar table is bundled, so nepkit never touches the network.
 
 ## Library
 
@@ -91,9 +92,7 @@ you only need "the user gave me something I can't convert".
 
 ## CLI
 
-```bash
-uv tool install git+https://github.com/akakritagya/nepkit   # or: uv run nepkit
-```
+Installing puts a `nepkit` command on your PATH:
 
 ```console
 $ nepkit bs2ad 2081-04-15
@@ -271,12 +270,12 @@ from its contract at no cost.
   directions read the same table, so a wrong month length cancels out exactly
   and every property still passes. This was verified by deliberately corrupting
   the table: all properties passed while conversions were silently wrong. Only
-  the sourcing described in [`src/nepkit/data/DATA.md`](src/nepkit/data/DATA.md)
+  the sourcing described in [`src/nepkit/data/DATA.md`](https://github.com/akakritagya/nepkit/blob/main/src/nepkit/data/DATA.md)
   stands behind the numbers themselves.
 
 ## Data provenance
 
-[`src/nepkit/data/DATA.md`](src/nepkit/data/DATA.md) records where the calendar
+[`src/nepkit/data/DATA.md`](https://github.com/akakritagya/nepkit/blob/main/src/nepkit/data/DATA.md) records where the calendar
 table came from: two independently maintained sources with different authors,
 languages, and conversion epochs, pinned at specific commits, diffed row by row
 over all 91 years with no disagreements, and cross-checked by walking each
@@ -284,7 +283,11 @@ source forward from its own epoch to the anchor.
 
 ## Development
 
+This project uses [uv](https://docs.astral.sh/uv/).
+
 ```bash
+git clone https://github.com/akakritagya/nepkit
+cd nepkit
 uv sync --group dev          # pytest, ruff, mypy, pre-commit
 uv run pytest                # run tests
 uv run ruff check .          # lint
@@ -304,6 +307,21 @@ before `push` (not on every commit — too slow to survive contact with a growin
 suite); and enforces
 [Conventional Commits](https://www.conventionalcommits.org/) on the message.
 
+### Releasing
+
+Releases go to PyPI through
+[Trusted Publishing](https://docs.pypi.org/trusted-publishers/) — GitHub Actions
+proves the repository's identity over OIDC, so no API token exists to leak or
+rotate. Bump `version` in `pyproject.toml`, then:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+The tag runs `.github/workflows/publish.yml`, which re-runs the full gate,
+refuses to continue if the tag disagrees with the packaged version, and only
+then uploads. Run the workflow manually to rehearse against TestPyPI first.
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/akakritagya/nepkit/blob/main/LICENSE).

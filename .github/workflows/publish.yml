@@ -1,0 +1,123 @@
+name: Publish
+
+# Two ways in:
+#   - push a v* tag        -> builds, then publishes to PyPI
+#   - run manually         -> builds, then publishes wherever you pick
+#
+# Authentication is Trusted Publishing: no token exists anywhere. The publish
+# jobs mint a short-lived OIDC token that proves "this is workflow publish.yml
+# on akakritagya/nepkit in environment X", and PyPI checks that against the
+# publisher you registered. Nothing to leak, nothing to rotate.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Index to publish to
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+# Least privilege by default; the publish jobs opt back into id-token below.
+permissions: {}
+
+env:
+  UV_FROZEN: "1"
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # No floating v9 tag is published for this action, only exact versions.
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --group dev
+
+      # The same gate that runs before every push locally. A tag should never
+      # be able to publish artifacts that the test suite would have rejected.
+      - name: Test
+        run: uv run pytest
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Type check
+        run: uv run mypy
+
+      - name: Build
+        run: uv build
+
+      # A tag that disagrees with pyproject.toml would publish a version nobody
+      # can find from the git history. PyPI will not let you correct it later,
+      # so this fails now instead.
+      - name: Tag must match the packaged version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          built=$(uv version --short)
+          if [ "$tag" != "$built" ]; then
+            echo "::error::tag v$tag does not match pyproject.toml version $built"
+            exit 1
+          fi
+          echo "tag v$tag matches pyproject.toml"
+
+      - name: Check metadata renders
+        run: uvx twine check --strict dist/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/nepkit/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          # A rehearsal you can repeat. Re-running with an already-uploaded
+          # version is a no-op here rather than a red build.
+          skip-existing: true
+
+  pypi:
+    name: Publish to PyPI
+    needs: build
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/nepkit/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      # Deliberately no skip-existing: on the real index, a silently skipped
+      # upload is a release you think shipped and did not.
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
