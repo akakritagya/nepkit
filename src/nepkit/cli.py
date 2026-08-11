@@ -136,22 +136,23 @@ def _print_banner(*, editing: bool) -> None:
     # stdout can still be redirected, and then this should come out unstyled.
     console = Console()
     console.print(_ASCII_TITLE, style="bold cyan", markup=False, highlight=False)
+    # Flush left, so the info block lines up with the wordmark's left edge.
     console.print(
-        f"  [bold]nepkit[/bold] [dim]v{version('nepkit')}[/dim] "
+        f"[bold]nepkit[/bold] [dim]v{version('nepkit')}[/dim] "
         f"[dim]-[/dim] Bikram Sambat <-> Gregorian date conversion",
         soft_wrap=True,
         highlight=False,
     )
-    console.print(f"  {_today_line()}", soft_wrap=True, highlight=False)
+    console.print(_today_line(), soft_wrap=True, highlight=False)
     console.print(
-        f"  [dim]Range [/dim] BS {MIN_BS_YEAR:04d}-01-01 .. {_format_bs(ad_to_bs(MAX_AD_DATE))}"
+        f"[dim]Range [/dim] BS {MIN_BS_YEAR:04d}-01-01 .. {_format_bs(ad_to_bs(MAX_AD_DATE))}"
         f"   AD {MIN_AD_DATE.isoformat()} .. {MAX_AD_DATE.isoformat()}",
         soft_wrap=True,
         highlight=False,
     )
     hint = "  Up/Down recalls history." if editing else ""
     console.print(
-        f"\n  [dim]Type a command, 'help', or 'quit'.{hint}[/dim]",
+        f"\n[dim]Type a command, 'help', or 'quit'.{hint}[/dim]",
         soft_wrap=True,
         highlight=False,
     )
