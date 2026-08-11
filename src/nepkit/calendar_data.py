@@ -15,6 +15,23 @@ from typing import Final
 from nepkit.exceptions import CalendarDataError, DateOutOfRangeError, InvalidDateError
 
 _MONTHS_PER_YEAR: Final[int] = 12
+
+# Romanisation varies (Ashoj/Ashwin, Poush/Push, Mangsir/Marga). This set is
+# pinned by a test so it stays stable once anything downstream prints it.
+BS_MONTH_NAMES: Final[tuple[str, ...]] = (
+    "Baisakh",
+    "Jestha",
+    "Ashadh",
+    "Shrawan",
+    "Bhadra",
+    "Ashoj",
+    "Kartik",
+    "Mangsir",
+    "Poush",
+    "Magh",
+    "Falgun",
+    "Chaitra",
+)
 _MIN_DAYS_IN_MONTH: Final[int] = 29
 _MAX_DAYS_IN_MONTH: Final[int] = 32
 _MIN_DAYS_IN_YEAR: Final[int] = 365
