@@ -105,7 +105,8 @@ could reliably guess which one you meant.
 
 ### Interactive
 
-Run `nepkit` with no arguments in a terminal and it opens a session:
+Run `nepkit` with no arguments in a terminal and it clears the screen and opens
+a session:
 
 ```
 $ nepkit
