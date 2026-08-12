@@ -12,6 +12,7 @@ The contract these tests pin down:
 
 import json
 import re
+import sys
 from datetime import date
 from importlib.metadata import version
 
@@ -176,7 +177,7 @@ def test_clear_is_not_a_shell_subcommand() -> None:
 
 def test_line_editing_is_available_on_this_platform() -> None:
     """readline ships with CPython everywhere except Windows."""
-    assert cli._enable_line_editing() is True
+    assert cli._enable_line_editing() is (sys.platform != "win32")
 
 
 def test_the_banner_advertises_history_when_line_editing_is_on(
@@ -326,10 +327,13 @@ def test_colour_can_be_forced_on_and_off() -> None:
     assert forced.exit_code == never.exit_code == 0
     # Forced output is boxed *and* styled; --color never must be neither, since
     # that is what anything downstream of a pipe has to be able to parse.
+    # Test the side rather than a corner: Rich draws a legacy-safe box on
+    # Windows (┌ square) and a rounded one (╭) elsewhere, but │ is common to
+    # both, and "is there a box at all" is the actual claim here.
     assert "\x1b[" in forced.stdout
-    assert "╭" in forced.stdout
+    assert "│" in forced.stdout
     assert "\x1b[" not in never.stdout
-    assert "╭" not in never.stdout
+    assert "│" not in never.stdout
 
 
 def test_todays_cell_is_highlighted_when_colour_is_on(monkeypatch: pytest.MonkeyPatch) -> None:
