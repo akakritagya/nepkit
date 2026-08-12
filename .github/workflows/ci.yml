@@ -70,6 +70,11 @@ jobs:
 
       - name: CLI is reachable the way the README says it is
         run: |
+          # setup-uv points UV_TOOL_BIN_DIR and UV_TOOL_DIR at runner temp
+          # directories. The README documents uv's *default* location, so clear
+          # the overrides -- otherwise this step passes while saying nothing
+          # about what a reader following the docs actually gets.
+          unset UV_TOOL_BIN_DIR UV_TOOL_DIR
           uv tool install .
           bin="$(cygpath -u "$(uv tool dir --bin)")"
           # The README tells Git Bash users to put $HOME/.local/bin on PATH.
@@ -82,6 +87,7 @@ jobs:
 
       - name: Completion installs into .bashrc
         run: |
+          unset UV_TOOL_BIN_DIR UV_TOOL_DIR
           export PATH="$(cygpath -u "$(uv tool dir --bin)"):$PATH"
           nepkit --install-completion
           test -f "$HOME/.bash_completions/nepkit.sh"
