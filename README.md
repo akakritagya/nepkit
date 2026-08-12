@@ -17,8 +17,10 @@ command-line tool.
 [![Python](https://img.shields.io/pypi/pyversions/nepkit)](https://pypi.org/project/nepkit/)
 [![License](https://img.shields.io/pypi/l/nepkit)](https://github.com/akakritagya/nepkit/blob/main/LICENSE)
 
-> **Status:** first release. The library and CLI both work and are tested; the
-> API may still change before 1.0.
+> **Status:** published, pre-1.0. The library and CLI both work and are tested,
+> but the API and the CLI's output shapes may still change — 0.2.0 appended the
+> weekday to `bs2ad`, `ad2bs`, and `today`. Pin a version if you script against
+> stdout, or read the first field: the date still starts the line.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
 through every command, option, and failure mode with real captured output.
