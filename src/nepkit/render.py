@@ -15,12 +15,24 @@ from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError
 
 WEEKDAY_HEADER: Final[str] = "Sun Mon Tue Wed Thu Fri Sat"
+WEEKDAY_ABBREVIATIONS: Final[tuple[str, ...]] = tuple(WEEKDAY_HEADER.split())
+"""The header's columns, reused as names. Derived so the two cannot disagree."""
+
 _DAYS_PER_WEEK: Final[int] = 7
 _CELL_WIDTH: Final[int] = 3
 
+ACCENT: Final[str] = "cyan"
+"""The calendar panel's border colour, which the CLI imports rather than repeats.
+
+Today's highlight below is the bright form of this same hue, so recolouring the
+calendar moves both together instead of leaving two literals to drift apart.
+Must stay one of rich's eight base colour names, since that derivation assumes
+a `bright_` counterpart exists.
+"""
+
 # Colours the digits themselves rather than filling the cell background, so the
 # grid keeps an even texture and today reads as one bright number in it.
-TODAY_STYLE: Final[str] = "bold bright_magenta"
+TODAY_STYLE: Final[str] = f"bold bright_{ACCENT}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +49,19 @@ class MonthGrid:
 def _sunday_first_index(day: date) -> int:
     """Python weeks start Monday; Nepali (and `cal`) calendars start Sunday."""
     return (day.weekday() + 1) % _DAYS_PER_WEEK
+
+
+def weekday_name(day: date) -> str:
+    """Sunday-first weekday abbreviation for a Gregorian date.
+
+    Deliberately not strftime("%a"), which is locale-dependent: under
+    LC_TIME=fr_FR that yields "mer." while the grid header still says "Wed".
+    Reading the name out of WEEKDAY_HEADER means the abbreviation and the column
+    it sits under can never disagree, and the output is byte-identical on every
+    machine -- which DEMO.md's captured blocks rely on, and CI now checks on
+    three platforms.
+    """
+    return WEEKDAY_ABBREVIATIONS[_sunday_first_index(day)]
 
 
 def _build_weeks(lead_blanks: int, total_days: int) -> tuple[tuple[int | None, ...], ...]:

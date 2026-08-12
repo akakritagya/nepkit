@@ -36,12 +36,14 @@ from nepkit.calendar_data import MAX_BS_YEAR, MIN_BS_YEAR
 from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 from nepkit.render import (
+    ACCENT,
     MonthGrid,
     ad_month_grid,
     block_width,
     bs_month_grid,
     render_body_markup,
     render_plain,
+    weekday_name,
 )
 
 EXIT_INVALID_DATE: Final[int] = 3
@@ -138,9 +140,14 @@ def _today_line() -> str:
     would once the clock passes MAX_AD_DATE in 2034.
     """
     ad = _today()
+    day = weekday_name(ad)
     if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
-        return f"[dim]Today [/dim] AD {ad.isoformat()}  [dim](outside the supported range)[/dim]"
-    return f"[dim]Today [/dim] BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()}"
+        return (
+            f"[dim]Today [/dim] AD {ad.isoformat()} {day}  [dim](outside the supported range)[/dim]"
+        )
+    return (
+        f"[dim]Today [/dim] BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()} {day}"
+    )
 
 
 def _print_banner(*, editing: bool) -> None:
@@ -282,7 +289,7 @@ def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -
     # is wider than the 27-column grid, so the border ate the year.
     body = f"[dim]{grid.subtitle.center(block_width(grid))}[/dim]\n{render_body_markup(grid)}"
     Console(force_terminal=True).print(
-        Panel.fit(body, title=f"[bold]{grid.title}[/bold]", border_style="cyan")
+        Panel.fit(body, title=f"[bold]{grid.title}[/bold]", border_style=ACCENT)
     )
 
 
@@ -302,9 +309,11 @@ def bs_to_ad_command(
         bs = _parse_bs(bs_date)
         ad = bs_to_ad(bs)
     if as_json:
-        typer.echo(json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat()}))
+        typer.echo(
+            json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
+        )
     else:
-        typer.echo(ad.isoformat())
+        typer.echo(f"{ad.isoformat()} {weekday_name(ad)}")
 
 
 @app.command("ad2bs")
@@ -317,9 +326,11 @@ def ad_to_bs_command(
         ad = _parse_ad(ad_date)
         bs = ad_to_bs(ad)
     if as_json:
-        typer.echo(json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat()}))
+        typer.echo(
+            json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
+        )
     else:
-        typer.echo(_format_bs(bs))
+        typer.echo(f"{_format_bs(bs)} {weekday_name(ad)}")
 
 
 @app.command("today")
@@ -328,13 +339,16 @@ def today_command(as_json: JsonOption = False) -> None:
     ad = _today()
     with _reported_as_exit_code():
         bs = ad_to_bs(ad)
+    day = weekday_name(ad)
     if as_json:
-        typer.echo(json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat()}))
+        typer.echo(json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": day}))
         return
     # Two labelled lines, the same shape `range` prints, so the two commands
-    # that report a position in both calendars read alike.
-    typer.echo(f"BS {_format_bs(bs)}")
-    typer.echo(f"AD {ad.isoformat()}")
+    # that report a position in both calendars read alike. The weekday repeats
+    # on both because they are one day: each line stays complete on its own
+    # rather than sending a reader to the other for half the answer.
+    typer.echo(f"BS {_format_bs(bs)} {day}")
+    typer.echo(f"AD {ad.isoformat()} {day}")
 
 
 @app.command("range")
