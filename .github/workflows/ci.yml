@@ -44,6 +44,55 @@ jobs:
       - name: Test
         run: uv run pytest
 
+  # The README documents a Git Bash setup path (uv tool install -> PATH ->
+  # completion) and the interactive prompt's readline caveat. Every other job
+  # here is ubuntu-only, so without this those would be assertions rather than
+  # tested claims -- and the failure they describe is silent: the install
+  # succeeds and the command is simply absent.
+  windows:
+    name: Windows (Git Bash)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash # GitHub's windows-latest maps this to the bundled Git Bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --group dev
+
+      - name: Test
+        run: uv run pytest
+
+      - name: CLI is reachable the way the README says it is
+        run: |
+          # setup-uv points UV_TOOL_BIN_DIR and UV_TOOL_DIR at runner temp
+          # directories. The README documents uv's *default* location, so clear
+          # the overrides -- otherwise this step passes while saying nothing
+          # about what a reader following the docs actually gets.
+          unset UV_TOOL_BIN_DIR UV_TOOL_DIR
+          uv tool install .
+          bin="$(cygpath -u "$(uv tool dir --bin)")"
+          # The README tells Git Bash users to put $HOME/.local/bin on PATH.
+          # Fail loudly here if uv ever moves the directory, rather than let
+          # the docs keep pointing somewhere that no longer exists.
+          test "$bin" = "$HOME/.local/bin"
+          export PATH="$bin:$PATH"
+          nepkit today
+          nepkit bs2ad 2081-04-15
+
+      - name: Completion installs into .bashrc
+        run: |
+          unset UV_TOOL_BIN_DIR UV_TOOL_DIR
+          export PATH="$(cygpath -u "$(uv tool dir --bin)"):$PATH"
+          nepkit --install-completion
+          test -f "$HOME/.bash_completions/nepkit.sh"
+          grep -q "bash_completions" "$HOME/.bashrc"
+
   # Lint, format and type-check results do not vary by interpreter -- mypy is
   # pinned to python_version 3.12 in pyproject.toml regardless of what runs it
   # -- so these run once instead of being repeated across the matrix.
