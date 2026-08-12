@@ -3,7 +3,7 @@
 Every command, every option, and every failure mode.
 
 All output below was captured by running the commands, not written by hand.
-Captured 2026-08-11 against v0.1.0 — anything involving *today* will differ when
+Captured 2026-08-12 against v0.2.0 — anything involving *today* will differ when
 you run it, and is marked where that matters.
 
 - [Conversions](#conversions)
@@ -28,14 +28,14 @@ calendars and nothing could reliably guess which you meant.
 
 ```console
 $ nepkit bs2ad 2081-04-15
-2024-07-30
+2024-07-30 Tue
 ```
 
 ### AD → BS
 
 ```console
 $ nepkit ad2bs 2024-07-30
-2081-04-15
+2081-04-15 Tue
 ```
 
 ### Historical dates
@@ -45,10 +45,10 @@ see [`src/nepkit/data/DATA.md`](src/nepkit/data/DATA.md).
 
 ```console
 $ nepkit ad2bs 2008-05-28      # Nepal declared a federal republic
-2065-02-15
+2065-02-15 Wed
 
 $ nepkit ad2bs 1951-02-18      # end of Rana rule / Democracy Day
-2007-11-07
+2007-11-07 Sun
 ```
 
 ### As JSON
@@ -58,10 +58,10 @@ the conversion ran.
 
 ```console
 $ nepkit bs2ad 2081-04-15 --json
-{"bs": "2081-04-15", "ad": "2024-07-30"}
+{"bs": "2081-04-15", "ad": "2024-07-30", "weekday": "Tue"}
 
 $ nepkit ad2bs 2024-07-30 --json
-{"bs": "2081-04-15", "ad": "2024-07-30"}
+{"bs": "2081-04-15", "ad": "2024-07-30", "weekday": "Tue"}
 ```
 
 ---
@@ -70,11 +70,11 @@ $ nepkit ad2bs 2024-07-30 --json
 
 ```console
 $ nepkit today
-BS 2083-04-26
-AD 2026-08-11
+BS 2083-04-27 Wed
+AD 2026-08-12 Wed
 
 $ nepkit today --json
-{"bs": "2083-04-26", "ad": "2026-08-11"}
+{"bs": "2083-04-27", "ad": "2026-08-12", "weekday": "Wed"}
 ```
 
 > Output varies with the date.
@@ -169,7 +169,8 @@ $ nepkit calbs 2081 4 --json
 ## Colour
 
 On a terminal, grids are boxed and today's date is picked out in bold bright
-magenta. Redirected, they are plain — the same convention `ls` and `git` follow.
+cyan — the bright form of the box's border colour. Redirected, they are plain —
+the same convention `ls` and `git` follow.
 
 ```console
 $ nepkit calbs 2081 9          # in a terminal
@@ -219,16 +220,16 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.1.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
-Today  BS 2083-04-26   AD 2026-08-11
+nepkit v0.2.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+Today  BS 2083-04-27   AD 2026-08-12 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
-BS 2083-04-26
-AD 2026-08-11
+BS 2083-04-27 Wed
+AD 2026-08-12 Wed
 nepkit> bs2ad 2081-04-15
-2024-07-30
+2024-07-30 Tue
 nepkit> calbs 2081 9
 ╭──────── Poush 2081 ─────────╮
 │     16 Dec - 13 Jan 2025    │
@@ -381,7 +382,7 @@ done
 ```
 
 ```console
-2081-04-15 -> 2024-07-30
+2081-04-15 -> 2024-07-30 Tue
 2095-01-01 -> outside nepkit's range (4)
 2081-13-01 -> not a real date (3)
 ```
@@ -390,7 +391,7 @@ done
 
 ```console
 $ nepkit today --json | jq -r .bs
-2083-04-26
+2083-04-27
 
 $ nepkit calbs 2081 4 --json | jq '[.weeks[][] | select(. != null)] | length'
 32

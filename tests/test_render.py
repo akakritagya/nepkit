@@ -4,7 +4,7 @@ These are pure functions on purpose: the layout logic is the part most likely
 to be wrong, and it should be testable without a CliRunner or a terminal.
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
@@ -12,13 +12,16 @@ from nepkit.calendar_data import BS_MONTH_NAMES
 from nepkit.convert import BSDate
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 from nepkit.render import (
+    ACCENT,
     TODAY_STYLE,
+    WEEKDAY_ABBREVIATIONS,
     WEEKDAY_HEADER,
     ad_month_grid,
     bs_month_grid,
     render_body,
     render_body_markup,
     render_plain,
+    weekday_name,
 )
 
 
@@ -179,3 +182,57 @@ def test_bs_month_grid_rejects_a_year_outside_the_table() -> None:
 def test_ad_month_grid_rejects_a_month_it_cannot_fully_convert(year: int, month: int) -> None:
     with pytest.raises(DateOutOfRangeError):
         ad_month_grid(year, month)
+
+
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [
+        (date(2024, 7, 28), "Sun"),
+        (date(2024, 7, 29), "Mon"),
+        (date(2024, 7, 30), "Tue"),
+        (date(2024, 7, 31), "Wed"),
+        (date(2024, 8, 1), "Thu"),
+        (date(2024, 8, 2), "Fri"),
+        (date(2024, 8, 3), "Sat"),
+    ],
+)
+def test_weekday_name_covers_a_whole_week(day: date, expected: str) -> None:
+    """One known week, so an off-by-one in the Sunday-first shift cannot hide."""
+    assert weekday_name(day) == expected
+
+
+def test_weekday_abbreviations_are_the_grid_header() -> None:
+    """The abbreviation and the column it sits under must never disagree.
+
+    Deriving one from the other is what makes that structural rather than a
+    thing to remember, so this pins the derivation itself.
+    """
+    assert tuple(WEEKDAY_HEADER.split()) == WEEKDAY_ABBREVIATIONS
+    assert len(WEEKDAY_ABBREVIATIONS) == 7
+
+
+def test_weekday_name_agrees_with_the_column_a_day_lands_in() -> None:
+    """Cross-check against the grid: the name must match the printed column.
+
+    bs_month_grid already places days in Sunday-first columns, so walking a
+    rendered week and reading its header proves weekday_name and the layout
+    share one notion of which day is which.
+    """
+    grid = bs_month_grid(2081, 4)
+    body_rows = render_body(grid).splitlines()
+    header_columns = body_rows[0].split()
+    first_ad = date(2024, 7, 16)  # BS 2081-04-01
+    for offset in range(7):
+        day = first_ad + timedelta(days=offset)
+        column = header_columns[(day.weekday() + 1) % 7]
+        assert weekday_name(day) == column
+
+
+def test_todays_highlight_is_the_bright_form_of_the_panel_accent() -> None:
+    """The highlight is meant to match the calendar box, not merely resemble it.
+
+    Deriving TODAY_STYLE from ACCENT is what stops the two drifting apart when
+    someone recolours one of them, so the derivation is the thing worth pinning.
+    """
+    assert f"bold bright_{ACCENT}" == TODAY_STYLE
+    assert ACCENT in TODAY_STYLE

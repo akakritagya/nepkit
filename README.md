@@ -140,14 +140,14 @@ command with `uv run nepkit` — or activate the venv first.
 
 ```console
 $ nepkit bs2ad 2081-04-15
-2024-07-30
+2024-07-30 Tue
 
 $ nepkit ad2bs 2024-07-30
-2081-04-15
+2081-04-15 Tue
 
 $ nepkit today
-BS 2083-04-26
-AD 2026-08-11
+BS 2083-04-27 Wed
+AD 2026-08-12 Wed
 
 $ nepkit range
 BS 2000-01-01 .. 2090-12-30  (years 2000-2090)
@@ -171,17 +171,17 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.1.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
-Today  BS 2083-04-26   AD 2026-08-11
+nepkit v0.2.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+Today  BS 2083-04-27   AD 2026-08-12 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
-BS 2083-04-26
-AD 2026-08-11
+BS 2083-04-27 Wed
+AD 2026-08-12 Wed
 
 nepkit> bs2ad 2081-04-15
-2024-07-30
+2024-07-30 Tue
 
 nepkit> quit
 ```
@@ -238,7 +238,9 @@ Grids are boxed and coloured on a terminal and plain when redirected, following
 the same convention as `ls` and `git`. Force it either way with
 `--color always|never|auto`.
 
-On a terminal, today's date is picked out in bold bright magenta. The highlight
+On a terminal, today's date is picked out in bold bright cyan — the bright form
+of the box's own border colour, so the highlight belongs to the grid containing
+it rather than arriving from a different palette. The highlight
 exists **only** in the coloured path: piped output is byte-for-byte
 identical whether or not today falls in the month shown, so nothing parsing
 stdout breaks on the one day a month it would otherwise appear. `--json`
@@ -250,7 +252,7 @@ Every command takes `--json`:
 
 ```console
 $ nepkit ad2bs 2008-05-28 --json
-{"bs": "2065-02-15", "ad": "2008-05-28"}
+{"bs": "2065-02-15", "ad": "2008-05-28", "weekday": "Wed"}
 ```
 
 **stdout carries results, stderr carries errors, and neither ever carries
@@ -361,7 +363,7 @@ proves the repository's identity over OIDC, so no API token exists to leak or
 rotate. Bump `version` in `pyproject.toml`, then:
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
 The tag runs `.github/workflows/publish.yml`, which re-runs the full gate,

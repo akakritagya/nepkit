@@ -24,24 +24,27 @@ from nepkit import cli
 runner = CliRunner()
 
 
-def test_bs2ad_prints_only_the_converted_date() -> None:
+def test_bs2ad_prints_the_converted_date_then_its_weekday() -> None:
+    # The date still starts the line, so anything already cutting the first
+    # field keeps working; the weekday is appended, never prepended.
     result = runner.invoke(cli.app, ["bs2ad", "2081-04-15"])
     assert result.exit_code == 0
-    assert result.stdout == "2024-07-30\n"
+    assert result.stdout == "2024-07-30 Tue\n"
     assert result.stderr == ""
 
 
-def test_ad2bs_prints_only_the_converted_date() -> None:
+def test_ad2bs_prints_the_converted_date_then_its_weekday() -> None:
     result = runner.invoke(cli.app, ["ad2bs", "2024-07-30"])
     assert result.exit_code == 0
-    assert result.stdout == "2081-04-15\n"
+    assert result.stdout == "2081-04-15 Tue\n"
     assert result.stderr == ""
 
 
 def test_ad2bs_agrees_with_a_tier_three_oracle_pair() -> None:
-    # Nepal declared a federal republic on 28 May 2008 = BS 2065-02-15.
+    # Nepal declared a federal republic on 28 May 2008 = BS 2065-02-15, a
+    # Wednesday -- the weekday is an independent check on the same record.
     result = runner.invoke(cli.app, ["ad2bs", "2008-05-28"])
-    assert result.stdout == "2065-02-15\n"
+    assert result.stdout == "2065-02-15 Wed\n"
 
 
 @pytest.mark.parametrize(
@@ -284,7 +287,13 @@ def test_help_exits_zero() -> None:
 def test_json_output_carries_both_calendars(command: str, argument: str) -> None:
     result = runner.invoke(cli.app, [command, argument, "--json"])
     assert result.exit_code == 0
-    assert json.loads(result.stdout) == {"bs": "2081-04-15", "ad": "2024-07-30"}
+    # 2024-07-30 is a Tuesday, and BS 2081-04-15 is the same physical day, so
+    # one weekday describes both calendars rather than one per calendar.
+    assert json.loads(result.stdout) == {
+        "bs": "2081-04-15",
+        "ad": "2024-07-30",
+        "weekday": "Tue",
+    }
 
 
 def test_today_uses_the_injectable_clock(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -294,14 +303,20 @@ def test_today_uses_the_injectable_clock(monkeypatch: pytest.MonkeyPatch) -> Non
     result = runner.invoke(cli.app, ["today"])
     assert result.exit_code == 0
     # Two labelled lines, matching `range`: both commands answer "where are we
-    # in each calendar?" and should not be formatted differently.
-    assert result.stdout == "BS 2081-04-15\nAD 2024-07-30\n"
+    # in each calendar?" and should not be formatted differently. The weekday
+    # repeats on both because they are one day -- each line stays readable on
+    # its own rather than sending you to the other for half the answer.
+    assert result.stdout == "BS 2081-04-15 Tue\nAD 2024-07-30 Tue\n"
 
 
 def test_today_json_carries_both_calendars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
     result = runner.invoke(cli.app, ["today", "--json"])
-    assert json.loads(result.stdout) == {"bs": "2081-04-15", "ad": "2024-07-30"}
+    assert json.loads(result.stdout) == {
+        "bs": "2081-04-15",
+        "ad": "2024-07-30",
+        "weekday": "Tue",
+    }
 
 
 def test_today_exits_4_when_the_clock_is_outside_the_table(
