@@ -51,6 +51,41 @@ uv tool install nepkit   # the CLI on its own, isolated
 [Typer](https://typer.tiangolo.com/) is the only direct dependency. The
 calendar table is bundled, so nepkit never touches the network.
 
+### Windows (Git Bash)
+
+`uv tool install` puts `nepkit.exe` in uv's executable directory, which Git Bash
+does not carry on `PATH` by default — the install reports success and the
+command is still not found. Add the directory, then confirm:
+
+```bash
+uv tool install nepkit
+uv tool dir --bin        # C:\Users\you\.local\bin
+uv tool update-shell     # add it to the Windows user PATH
+```
+
+`uv tool update-shell` writes to the `HKCU\Environment` registry key rather than
+to `~/.bashrc`, so only a **newly launched** tab sees it, and Windows does not
+reliably notify running processes of the change
+([uv#17331](https://github.com/astral-sh/uv/issues/17331)). If a fresh tab still
+comes up empty, set it from bash instead — under Git Bash `$HOME` is
+`/c/Users/you`, so this resolves to the same directory `uv tool dir --bin`
+prints:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+```
+
+Tab completion is the same one-liner as on Linux:
+
+```bash
+nepkit --install-completion
+```
+
+It appends a `source` line to `~/.bashrc` pointing at
+`~/.bash_completions/nepkit.sh`, spelled as a Windows path (`C:\Users\...`).
+That looks wrong inside a bash file, but MSYS2 resolves both spellings, so it
+works as written.
+
 ## Library
 
 ```python
@@ -97,7 +132,9 @@ you only need "the user gave me something I can't convert".
 
 ## CLI
 
-Installing puts a `nepkit` command on your PATH:
+`pip install` and `uv tool install` put a `nepkit` command on your PATH. `uv
+add` installs into the project's `.venv` without activating it, so reach the
+command with `uv run nepkit` — or activate the venv first.
 
 ```console
 $ nepkit bs2ad 2081-04-15
