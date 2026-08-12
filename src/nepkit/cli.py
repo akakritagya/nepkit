@@ -97,11 +97,20 @@ def _enable_line_editing() -> bool:
     code. It only engages on a real terminal, which is why no test can observe
     the recall itself.
 
-    Absent on Windows, where the prompt keeps working without editing.
+    CPython ships no readline on Windows; pyreadline3 supplies one there (see
+    the marker in pyproject.toml), which is why this needs no platform branch.
+    The except clause still matters: pyreadline3 drives the Win32 console API
+    and can fail where Python has no real console, and the prompt has to keep
+    working when it does.
     """
     try:
         import readline
     except ImportError:
+        return False
+    except Exception:
+        # pyreadline3 installs its Win32 console hook during import, so it can
+        # fail with whatever the console layer raises rather than ImportError.
+        # Line editing is a nicety; the prompt has to open either way.
         return False
     readline.set_history_length(_HISTORY_LENGTH)
     return True
