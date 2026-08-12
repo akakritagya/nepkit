@@ -48,8 +48,10 @@ uv add nepkit            # into a uv project
 uv tool install nepkit   # the CLI on its own, isolated
 ```
 
-[Typer](https://typer.tiangolo.com/) is the only direct dependency. The
-calendar table is bundled, so nepkit never touches the network.
+[Typer](https://typer.tiangolo.com/) is the only direct dependency, plus
+[pyreadline3](https://pypi.org/project/pyreadline3/) on Windows alone, which
+gives the interactive prompt the line editing CPython omits there. The calendar
+table is bundled, so nepkit never touches the network.
 
 ### Windows (Git Bash)
 
@@ -195,8 +197,10 @@ stays a usage error rather than clearing your terminal.
 
 Up and Down recall previous commands, and the usual `readline` editing keys
 work (Ctrl-A, Ctrl-E, Ctrl-R, and so on). History lasts for the session and is
-not written to disk. On Windows, where Python ships no `readline`, the prompt
-works exactly the same minus the editing keys.
+not written to disk. CPython ships no `readline` on Windows, so nepkit depends
+on `pyreadline3` there to supply one — it needs a real console, which Windows
+Terminal provides. Should it fail to load, the prompt still works; it loses the
+editing keys and says so in its banner.
 
 **Only on a terminal.** With stdin redirected — a pipeline, a script, CI —
 `nepkit` prints help and exits 2 exactly as before, so nothing ever blocks
