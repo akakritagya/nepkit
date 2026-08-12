@@ -14,6 +14,11 @@ classifiers = [
 ]
 dependencies = [
   "typer>=0.15,<0.28",
+  # CPython ships no readline on Windows, which cost the REPL its Up/Down
+  # history. pyreadline3 supplies a `readline` module there, so cli.py's plain
+  # `import readline` starts succeeding and needs no platform branch. The
+  # marker keeps every other platform's install unchanged.
+  "pyreadline3>=3.5; sys_platform == 'win32'",
 ]
 description = "Typed Bikram Sambat ↔ Gregorian date conversion, as a library and a CLI."
 keywords = ["nepal", "bikram-sambat", "nepali-date", "calendar", "cli"]

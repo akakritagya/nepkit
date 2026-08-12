@@ -10,9 +10,9 @@ The contract these tests pin down:
 * stdout never contains ANSI escapes unless colour was explicitly demanded.
 """
 
+import builtins
 import json
 import re
-import sys
 from datetime import date
 from importlib.metadata import version
 
@@ -176,8 +176,34 @@ def test_clear_is_not_a_shell_subcommand() -> None:
 
 
 def test_line_editing_is_available_on_this_platform() -> None:
-    """readline ships with CPython everywhere except Windows."""
-    assert cli._enable_line_editing() is (sys.platform != "win32")
+    """Every platform now has a readline: CPython's, or pyreadline3 on Windows.
+
+    This is the assertion that pins the pyreadline3 dependency in place. If the
+    marker in pyproject.toml stops matching, or pyreadline3 stops hooking
+    PyOS_ReadlineFunctionPointer on a Python we support, the Windows job fails
+    here rather than shipping a REPL whose Up/Down key silently does nothing.
+    """
+    assert cli._enable_line_editing() is True
+
+
+def test_line_editing_survives_a_readline_that_explodes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failing readline must cost the editing keys, not the prompt.
+
+    pyreadline3 installs its console hook during import, so it can raise
+    something other than ImportError -- catching only that would turn a missing
+    nicety into a REPL that will not open at all.
+    """
+    real_import = builtins.__import__
+
+    def explode(name: str, *args: object, **kwargs: object) -> object:
+        if name == "readline":
+            raise RuntimeError("no console handle")
+        return real_import(name, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(builtins, "__import__", explode)
+    assert cli._enable_line_editing() is False
 
 
 def test_the_banner_advertises_history_when_line_editing_is_on(
@@ -190,10 +216,12 @@ def test_the_banner_advertises_history_when_line_editing_is_on(
 
 
 def test_the_repl_still_works_without_readline(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Windows has no readline. The prompt must degrade, not fail.
+    """readline can still fail to load. The prompt must degrade, not fail.
 
-    Nothing about dispatch depends on line editing, so losing it should cost
-    the history hint and nothing else.
+    pyreadline3 covers Windows now, but it drives the Win32 console API and can
+    decline to install its hook -- under a terminal that gives Python no real
+    console, for one. Nothing about dispatch depends on line editing, so losing
+    it should cost the history hint and nothing else.
     """
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
     monkeypatch.setattr(cli, "_enable_line_editing", lambda: False)

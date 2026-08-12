@@ -275,8 +275,9 @@ $ echo $?
 2
 ```
 
-History lasts for the session and is not written to disk. On Windows, where
-Python ships no `readline`, the prompt works the same minus the editing keys.
+History lasts for the session and is not written to disk. CPython ships no
+`readline` on Windows, so nepkit depends on `pyreadline3` there to supply one.
+If it fails to load, the prompt works the same minus the editing keys.
 
 ---
 
