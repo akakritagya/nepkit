@@ -1,18 +1,34 @@
+"""Nepkit's exception hierarchy.
+
+Every error nepkit raises descends from `NepkitError`, split into two
+branches: a malformed bundled calendar table (`CalendarDataError`, raised at
+import) and a bad date input (`DateError`, raised at call time), further
+split into `InvalidDateError` and `DateOutOfRangeError`.
+"""
+
+
 class NepkitError(Exception):
-    """Base for every error nepkit raises."""
+    """Base class for every error nepkit raises."""
 
 
 class CalendarDataError(NepkitError):
-    """The bundled calendar table is malformed. Raised at import."""
+    """Raised when the bundled calendar table is malformed.
+
+    Raised at import time, since the table is loaded and validated as soon
+    as `nepkit.calendar_data` is imported.
+    """
 
 
 class DateError(NepkitError):
-    """Base for date-input problems."""
+    """Base class for date-input problems."""
 
 
 class InvalidDateError(DateError):
-    """Syntactically parseable, but not a real BS date."""
+    """Raised when a date is syntactically parseable but not a real BS date.
+
+    For example, BS month 13, or day 33 in a 32-day month.
+    """
 
 
 class DateOutOfRangeError(DateError):
-    """Outside the range the bundled table covers."""
+    """Raised when a date is real but outside the bundled table's range."""

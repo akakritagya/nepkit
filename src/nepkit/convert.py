@@ -26,23 +26,68 @@ MAX_AD_DATE: Final[date] = ANCHOR.ad_date + timedelta(days=TOTAL_DAYS - 1)
 
 @dataclass(frozen=True, slots=True)
 class BSDate:
-    """A Bikram Sambat date, validated on construction against the bundled table."""
+    """A Bikram Sambat date, validated on construction against the bundled table.
+
+    Parameters
+    ----------
+    year : int
+        The Bikram Sambat year.
+    month : int
+        The Bikram Sambat month, 1-12.
+    day : int
+        The day of the month.
+
+    Raises
+    ------
+    InvalidDateError
+        If `(year, month, day)` is not a real BS date.
+    DateOutOfRangeError
+        If `year` is outside the bundled table's range.
+    """
 
     year: int
     month: int
     day: int
 
     def __post_init__(self) -> None:
+        """Validate the date against the bundled table."""
         check_bs_date(self.year, self.month, self.day)
 
 
 def bs_to_ad(bs: BSDate) -> date:
-    """Convert a Bikram Sambat date to its Gregorian equivalent."""
+    """Convert a Bikram Sambat date to its Gregorian equivalent.
+
+    Parameters
+    ----------
+    bs : BSDate
+        The Bikram Sambat date to convert.
+
+    Returns
+    -------
+    date
+        The equivalent Gregorian date.
+    """
     return ANCHOR.ad_date + timedelta(days=days_from_anchor(bs.year, bs.month, bs.day))
 
 
 def ad_to_bs(ad: date) -> BSDate:
-    """Convert a Gregorian date to its Bikram Sambat equivalent."""
+    """Convert a Gregorian date to its Bikram Sambat equivalent.
+
+    Parameters
+    ----------
+    ad : date
+        The Gregorian date to convert.
+
+    Returns
+    -------
+    BSDate
+        The equivalent Bikram Sambat date.
+
+    Raises
+    ------
+    DateOutOfRangeError
+        If `ad` is outside `[MIN_AD_DATE, MAX_AD_DATE]`.
+    """
     if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
         raise DateOutOfRangeError(
             f"AD {ad.isoformat()} is outside the convertible window "

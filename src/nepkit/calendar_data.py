@@ -40,12 +40,28 @@ _MAX_DAYS_IN_YEAR: Final[int] = 366
 
 @dataclass(frozen=True, slots=True)
 class BSYearData:
-    """One BS year's month lengths, validated on construction."""
+    """One BS year's month lengths, validated on construction.
+
+    Parameters
+    ----------
+    year : int
+        The Bikram Sambat year this row describes.
+    months : tuple of int
+        The number of days in each of the year's 12 months, in order.
+
+    Raises
+    ------
+    CalendarDataError
+        If the row does not have exactly 12 months, if any month's day
+        count is outside `[29, 32]`, or if the months do not sum to a
+        plausible year length.
+    """
 
     year: int
     months: tuple[int, ...]
 
     def __post_init__(self) -> None:
+        """Validate the month count, each month's length, and the year total."""
         if len(self.months) != _MONTHS_PER_YEAR:
             raise CalendarDataError(
                 f"BS {self.year}: expected {_MONTHS_PER_YEAR} months, got {len(self.months)}"
@@ -65,6 +81,19 @@ class BSYearData:
 
 
 def _load_years() -> tuple[BSYearData, ...]:
+    """Load and validate calendar.json into a sorted tuple of year rows.
+
+    Returns
+    -------
+    tuple of BSYearData
+        Every year row in calendar.json, sorted by year.
+
+    Raises
+    ------
+    CalendarDataError
+        If calendar.json is missing, not valid JSON, empty, or contains a
+        malformed row.
+    """
     raw = resources.files("nepkit.data").joinpath("calendar.json").read_text(encoding="utf-8")
     try:
         rows: object = json.loads(raw)
@@ -92,6 +121,18 @@ def _load_years() -> tuple[BSYearData, ...]:
 
 
 def _check_contiguous(years: tuple[BSYearData, ...]) -> None:
+    """Raise unless `years` covers a run of consecutive BS years.
+
+    Parameters
+    ----------
+    years : tuple of BSYearData
+        Year rows, assumed sorted by year.
+
+    Raises
+    ------
+    CalendarDataError
+        If two rows share a year, or a year is skipped between rows.
+    """
     for previous, current in pairwise(years):
         if current.year == previous.year:
             raise CalendarDataError(f"calendar.json has a duplicate row for BS {current.year}")
@@ -102,7 +143,22 @@ def _check_contiguous(years: tuple[BSYearData, ...]) -> None:
 
 
 def _build_cumulative_offsets(years: tuple[BSYearData, ...]) -> Mapping[int, int]:
-    """Days from the anchor to the start of each BS year, so bs_to_ad never sums a range."""
+    """Compute the day offset from the anchor to the start of each BS year.
+
+    Days from the anchor to the start of each BS year, so bs_to_ad never
+    sums a range at call time.
+
+    Parameters
+    ----------
+    years : tuple of BSYearData
+        Year rows, assumed sorted by year and contiguous.
+
+    Returns
+    -------
+    Mapping of int to int
+        Each year mapped to the number of days between the first year's
+        start and that year's start.
+    """
     offsets: dict[int, int] = {}
     running = 0
     for year_data in years:
@@ -131,7 +187,19 @@ TOTAL_DAYS: Final[int] = sum(sum(y.months) for y in _YEARS)
 
 @dataclass(frozen=True, slots=True)
 class Anchor:
-    """The one verified BS↔AD correspondence the whole module hangs on."""
+    """The one verified BS<->AD correspondence the whole module hangs on.
+
+    Parameters
+    ----------
+    bs_year : int
+        The anchor's Bikram Sambat year.
+    bs_month : int
+        The anchor's Bikram Sambat month.
+    bs_day : int
+        The anchor's Bikram Sambat day.
+    ad_date : date
+        The Gregorian date equivalent to `(bs_year, bs_month, bs_day)`.
+    """
 
     bs_year: int
     bs_month: int
@@ -140,7 +208,23 @@ class Anchor:
 
 
 def _check_anchor_is_first_day_of_min_year(anchor: Anchor, min_year: int) -> None:
-    """The cumulative offset table starts at min_year, so the anchor must be its 1/1."""
+    """Raise unless `anchor` is the first day of `min_year`.
+
+    The cumulative offset table starts at min_year, so the anchor must be
+    its 1/1.
+
+    Parameters
+    ----------
+    anchor : Anchor
+        The anchor to check.
+    min_year : int
+        The bundled table's first BS year.
+
+    Raises
+    ------
+    CalendarDataError
+        If `anchor` is not BS `min_year`-01-01.
+    """
     if (anchor.bs_year, anchor.bs_month, anchor.bs_day) != (min_year, 1, 1):
         raise CalendarDataError(
             f"ANCHOR {anchor.bs_year}-{anchor.bs_month:02d}-{anchor.bs_day:02d} is not "
@@ -159,7 +243,27 @@ _check_anchor_is_first_day_of_min_year(ANCHOR, MIN_BS_YEAR)
 
 
 def days_in_month(year: int, month: int) -> int:
-    """Number of days in the given BS month. Raises on an out-of-range year or bad month."""
+    """Look up the number of days in a Bikram Sambat month.
+
+    Parameters
+    ----------
+    year : int
+        The Bikram Sambat year.
+    month : int
+        The Bikram Sambat month, 1-12.
+
+    Returns
+    -------
+    int
+        The number of days in that month.
+
+    Raises
+    ------
+    DateOutOfRangeError
+        If `year` is outside the bundled table's range.
+    InvalidDateError
+        If `month` is outside `[1, 12]`.
+    """
     if not (MIN_BS_YEAR <= year <= MAX_BS_YEAR):
         raise DateOutOfRangeError(
             f"BS year {year} is outside the bundled range [{MIN_BS_YEAR}, {MAX_BS_YEAR}]"
@@ -170,21 +274,78 @@ def days_in_month(year: int, month: int) -> int:
 
 
 def check_bs_date(year: int, month: int, day: int) -> None:
-    """Raise unless (year, month, day) is a real BS date inside the bundled range."""
+    """Raise unless `(year, month, day)` is a real BS date inside the bundled range.
+
+    Parameters
+    ----------
+    year : int
+        The Bikram Sambat year.
+    month : int
+        The Bikram Sambat month, 1-12.
+    day : int
+        The day of the month.
+
+    Raises
+    ------
+    DateOutOfRangeError
+        If `year` is outside the bundled table's range.
+    InvalidDateError
+        If `month` or `day` is not a real month or day for that year.
+    """
     max_day = days_in_month(year, month)  # validates year and month
     if not (1 <= day <= max_day):
         raise InvalidDateError(f"BS {year}-{month:02d}: day {day} is outside [1, {max_day}]")
 
 
 def days_from_anchor(year: int, month: int, day: int) -> int:
-    """Days from ANCHOR to the given BS date. The one primitive bs_to_ad needs."""
+    """Count the days from ANCHOR to the given BS date.
+
+    The one primitive bs_to_ad needs.
+
+    Parameters
+    ----------
+    year : int
+        The Bikram Sambat year.
+    month : int
+        The Bikram Sambat month, 1-12.
+    day : int
+        The day of the month.
+
+    Returns
+    -------
+    int
+        The number of days between ANCHOR and `(year, month, day)`.
+
+    Raises
+    ------
+    DateOutOfRangeError
+        If `year` is outside the bundled table's range.
+    InvalidDateError
+        If `(year, month, day)` is not a real BS date.
+    """
     check_bs_date(year, month, day)
     days_before_month = sum(_BY_YEAR[year].months[: month - 1])
     return _CUMULATIVE_OFFSET[year] + days_before_month + (day - 1)
 
 
 def bs_from_days(days: int) -> tuple[int, int, int]:
-    """Inverse of days_from_anchor: the BS date that many days after ANCHOR."""
+    """Invert days_from_anchor: find the BS date that many days after ANCHOR.
+
+    Parameters
+    ----------
+    days : int
+        Days since ANCHOR.
+
+    Returns
+    -------
+    tuple of (int, int, int)
+        The `(year, month, day)` that many days after ANCHOR.
+
+    Raises
+    ------
+    DateOutOfRangeError
+        If `days` is outside `[0, TOTAL_DAYS)`.
+    """
     if not (0 <= days < TOTAL_DAYS):
         raise DateOutOfRangeError(
             f"{days} days from the anchor is outside [0, {TOTAL_DAYS}) — the bundled "
