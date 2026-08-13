@@ -56,7 +56,14 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF"]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests document intent through names and assertions, not docstrings.
+"tests/*" = ["D"]
 
 [tool.ruff.format]
 docstring-code-format = true

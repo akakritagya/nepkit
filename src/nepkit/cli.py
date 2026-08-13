@@ -4,6 +4,8 @@ Deliberately thin. Everything about *what* to print lives in nepkit.render and
 nepkit.convert; this module decides only where output goes and what exit code
 to leave behind.
 
+Notes
+-----
 Exit codes:
 
     0  success
@@ -74,7 +76,17 @@ _HISTORY_LENGTH: Final[int] = 1000
 
 
 class ColorMode(StrEnum):
-    """When to dress up calendar output. Grids only; conversions are never coloured."""
+    """When to dress up calendar output. Grids only; conversions are never coloured.
+
+    Attributes
+    ----------
+    auto
+        Colour only when stdout is a terminal.
+    always
+        Always colour, even when redirected.
+    never
+        Never colour.
+    """
 
     auto = "auto"
     always = "always"
@@ -82,12 +94,28 @@ class ColorMode(StrEnum):
 
 
 def _today() -> date:
-    """Seam for tests. Patch this rather than the clock itself."""
+    """Return today's date.
+
+    Seam for tests. Patch this rather than the clock itself.
+
+    Returns
+    -------
+    date
+        Today's Gregorian date.
+    """
     return date.today()
 
 
 def _stdin_is_interactive() -> bool:
-    """Seam for tests, and the guard that keeps `nepkit` usable in a pipeline."""
+    """Report whether stdin is a live terminal.
+
+    Seam for tests, and the guard that keeps `nepkit` usable in a pipeline.
+
+    Returns
+    -------
+    bool
+        True if stdin is a tty.
+    """
     return sys.stdin.isatty()
 
 
@@ -104,6 +132,11 @@ def _enable_line_editing() -> bool:
     The except clause still matters: pyreadline3 drives the Win32 console API
     and can fail where Python has no real console, and the prompt has to keep
     working when it does.
+
+    Returns
+    -------
+    bool
+        True if line editing was successfully enabled.
     """
     try:
         import readline
@@ -123,6 +156,12 @@ def _dispatch(line: str) -> None:
 
     standalone_mode=False makes Typer return the exit code instead of calling
     sys.exit, so a failing command ends the line rather than the session.
+
+    Parameters
+    ----------
+    line : str
+        One line of input, shell-split and dispatched as a `nepkit`
+        invocation.
     """
     try:
         get_command(app).main(shlex.split(line), prog_name="nepkit", standalone_mode=False)
@@ -134,10 +173,15 @@ def _dispatch(line: str) -> None:
 
 
 def _today_line() -> str:
-    """Today in both calendars, or a note that it is off the end of the table.
+    """Format today in both calendars, or a note that it is off the end of the table.
 
     Decorating the banner must never stop the session from opening, which it
     would once the clock passes MAX_AD_DATE in 2034.
+
+    Returns
+    -------
+    str
+        A rich-markup line for the REPL banner.
     """
     ad = _today()
     day = weekday_name(ad)
@@ -151,6 +195,14 @@ def _today_line() -> str:
 
 
 def _print_banner(*, editing: bool) -> None:
+    """Print the ASCII wordmark, version, today's date, and usage hint.
+
+    Parameters
+    ----------
+    editing : bool
+        Whether line editing is active, to decide if the Up/Down hint is
+        shown.
+    """
     # A plain Console, not force_terminal: the REPL needs stdin to be a tty but
     # stdout can still be redirected, and then this should come out unstyled.
     console = Console()
@@ -182,6 +234,7 @@ def _clear_screen() -> None:
 
 
 def _run_repl() -> None:
+    """Run the interactive REPL until the user quits or sends EOF."""
     editing = _enable_line_editing()
     _clear_screen()
     _print_banner(editing=editing)
@@ -208,7 +261,14 @@ def _run_repl() -> None:
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context) -> None:
-    """Bikram Sambat <-> Gregorian date conversion."""
+    """Bikram Sambat <-> Gregorian date conversion.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer's invocation context, used to detect whether a subcommand was
+        given.
+    """
     if ctx.invoked_subcommand is not None:
         return
     if not _stdin_is_interactive():
@@ -221,7 +281,19 @@ def main(ctx: typer.Context) -> None:
 
 @contextmanager
 def _reported_as_exit_code() -> Generator[None, None, None]:
-    """Turn nepkit's date errors into stderr messages and distinct exit codes."""
+    """Turn nepkit's date errors into stderr messages and distinct exit codes.
+
+    Yields
+    ------
+    None
+        Nothing; used only for its exception handling.
+
+    Raises
+    ------
+    typer.Exit
+        With `EXIT_INVALID_DATE` or `EXIT_OUT_OF_RANGE`, after printing the
+        original error to stderr.
+    """
     try:
         yield
     except InvalidDateError as exc:
@@ -237,6 +309,21 @@ def _parse_ymd(text: str) -> tuple[int, int, int]:
 
     Both directions go through this so that identical garbage produces an
     identical exit code either way.
+
+    Parameters
+    ----------
+    text : str
+        The date string to parse.
+
+    Returns
+    -------
+    tuple of (int, int, int)
+        The `(year, month, day)` parsed from `text`.
+
+    Raises
+    ------
+    InvalidDateError
+        If `text` is not in YYYY-MM-DD form.
     """
     parts = text.split("-")
     if len(parts) != _DATE_PARTS or not all(part.isdigit() for part in parts):
@@ -246,11 +333,47 @@ def _parse_ymd(text: str) -> tuple[int, int, int]:
 
 
 def _parse_bs(text: str) -> BSDate:
+    """Parse a Bikram Sambat date string.
+
+    Parameters
+    ----------
+    text : str
+        The date string, YYYY-MM-DD.
+
+    Returns
+    -------
+    BSDate
+        The parsed and validated BS date.
+
+    Raises
+    ------
+    InvalidDateError
+        If `text` is not a real BS date.
+    DateOutOfRangeError
+        If the year is outside the bundled table's range.
+    """
     year, month, day = _parse_ymd(text)
     return BSDate(year=year, month=month, day=day)  # validates against the table
 
 
 def _parse_ad(text: str) -> date:
+    """Parse a Gregorian date string.
+
+    Parameters
+    ----------
+    text : str
+        The date string, YYYY-MM-DD.
+
+    Returns
+    -------
+    date
+        The parsed Gregorian date.
+
+    Raises
+    ------
+    InvalidDateError
+        If `text` is not a real Gregorian date.
+    """
     year, month, day = _parse_ymd(text)
     try:
         return date(year, month, day)
@@ -259,10 +382,35 @@ def _parse_ad(text: str) -> date:
 
 
 def _format_bs(bs: BSDate) -> str:
+    """Format a BSDate as zero-padded YYYY-MM-DD.
+
+    Parameters
+    ----------
+    bs : BSDate
+        The date to format.
+
+    Returns
+    -------
+    str
+        The formatted date.
+    """
     return f"{bs.year:04d}-{bs.month:02d}-{bs.day:02d}"
 
 
 def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -> None:
+    """Print a month grid as JSON, plain text, or a coloured panel.
+
+    Parameters
+    ----------
+    grid : MonthGrid
+        The grid to print.
+    kind : str
+        "bs" or "ad", included in the JSON output to identify the calendar.
+    as_json : bool
+        Whether to emit machine-readable JSON instead of a rendered grid.
+    color : ColorMode
+        When to colourise the grid; ignored when `as_json` is True.
+    """
     if as_json:
         typer.echo(
             json.dumps(
@@ -299,12 +447,20 @@ YearArg = Annotated[int | None, typer.Argument(help="Year. Defaults to the curre
 MonthArg = Annotated[int | None, typer.Argument(help="Month, 1-12. Defaults to the current one.")]
 
 
-@app.command("bs2ad")
+@app.command("bs2ad", help="Convert a Bikram Sambat date to Gregorian.")
 def bs_to_ad_command(
     bs_date: Annotated[str, typer.Argument(metavar="BS_DATE", help="Bikram Sambat YYYY-MM-DD.")],
     as_json: JsonOption = False,
 ) -> None:
-    """Convert a Bikram Sambat date to Gregorian."""
+    """Convert a Bikram Sambat date to Gregorian.
+
+    Parameters
+    ----------
+    bs_date : str
+        The Bikram Sambat date, YYYY-MM-DD.
+    as_json : bool, optional
+        Emit machine-readable JSON instead of plain text. Default is False.
+    """
     with _reported_as_exit_code():
         bs = _parse_bs(bs_date)
         ad = bs_to_ad(bs)
@@ -316,12 +472,20 @@ def bs_to_ad_command(
         typer.echo(f"{ad.isoformat()} {weekday_name(ad)}")
 
 
-@app.command("ad2bs")
+@app.command("ad2bs", help="Convert a Gregorian date to Bikram Sambat.")
 def ad_to_bs_command(
     ad_date: Annotated[str, typer.Argument(metavar="AD_DATE", help="Gregorian YYYY-MM-DD.")],
     as_json: JsonOption = False,
 ) -> None:
-    """Convert a Gregorian date to Bikram Sambat."""
+    """Convert a Gregorian date to Bikram Sambat.
+
+    Parameters
+    ----------
+    ad_date : str
+        The Gregorian date, YYYY-MM-DD.
+    as_json : bool, optional
+        Emit machine-readable JSON instead of plain text. Default is False.
+    """
     with _reported_as_exit_code():
         ad = _parse_ad(ad_date)
         bs = ad_to_bs(ad)
@@ -333,9 +497,15 @@ def ad_to_bs_command(
         typer.echo(f"{_format_bs(bs)} {weekday_name(ad)}")
 
 
-@app.command("today")
+@app.command("today", help="Print today's date in both calendars.")
 def today_command(as_json: JsonOption = False) -> None:
-    """Print today's date in both calendars."""
+    """Print today's date in both calendars.
+
+    Parameters
+    ----------
+    as_json : bool, optional
+        Emit machine-readable JSON instead of plain text. Default is False.
+    """
     ad = _today()
     with _reported_as_exit_code():
         bs = ad_to_bs(ad)
@@ -351,9 +521,15 @@ def today_command(as_json: JsonOption = False) -> None:
     typer.echo(f"AD {ad.isoformat()} {day}")
 
 
-@app.command("range")
+@app.command("range", help="Print the date range nepkit has data for.")
 def range_command(as_json: JsonOption = False) -> None:
-    """Print the date range nepkit has data for."""
+    """Print the date range nepkit has data for.
+
+    Parameters
+    ----------
+    as_json : bool, optional
+        Emit machine-readable JSON instead of plain text. Default is False.
+    """
     bs_min, bs_max = f"{MIN_BS_YEAR:04d}-01-01", _format_bs(ad_to_bs(MAX_AD_DATE))
     if as_json:
         typer.echo(
@@ -372,14 +548,27 @@ def range_command(as_json: JsonOption = False) -> None:
     typer.echo(f"AD {MIN_AD_DATE.isoformat()} .. {MAX_AD_DATE.isoformat()}")
 
 
-@app.command("calbs")
+@app.command("calbs", help="Display a Bikram Sambat month.")
 def calbs_command(
     year: YearArg = None,
     month: MonthArg = None,
     as_json: JsonOption = False,
     color: ColorOption = ColorMode.auto,
 ) -> None:
-    """Display a Bikram Sambat month."""
+    """Display a Bikram Sambat month.
+
+    Parameters
+    ----------
+    year : int or None, optional
+        The BS year. Defaults to the current one.
+    month : int or None, optional
+        The BS month, 1-12. Defaults to the current one.
+    as_json : bool, optional
+        Emit machine-readable JSON instead of a rendered grid. Default is
+        False.
+    color : ColorMode, optional
+        When to colourise the grid. Default is `ColorMode.auto`.
+    """
     with _reported_as_exit_code():
         current = ad_to_bs(_today()) if MIN_AD_DATE <= _today() <= MAX_AD_DATE else None
         if year is None or month is None:
@@ -393,14 +582,27 @@ def calbs_command(
     _emit_grid(grid, "bs", as_json=as_json, color=color)
 
 
-@app.command("calad")
+@app.command("calad", help="Display a Gregorian month.")
 def calad_command(
     year: YearArg = None,
     month: MonthArg = None,
     as_json: JsonOption = False,
     color: ColorOption = ColorMode.auto,
 ) -> None:
-    """Display a Gregorian month."""
+    """Display a Gregorian month.
+
+    Parameters
+    ----------
+    year : int or None, optional
+        The Gregorian year. Defaults to the current one.
+    month : int or None, optional
+        The Gregorian month, 1-12. Defaults to the current one.
+    as_json : bool, optional
+        Emit machine-readable JSON instead of a rendered grid. Default is
+        False.
+    color : ColorMode, optional
+        When to colourise the grid. Default is `ColorMode.auto`.
+    """
     with _reported_as_exit_code():
         today = _today()
         grid = ad_month_grid(year or today.year, month or today.month, today=today)
