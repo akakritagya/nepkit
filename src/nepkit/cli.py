@@ -259,8 +259,42 @@ def _run_repl() -> None:
         _dispatch("--help" if word == "help" else line)
 
 
+def _version_callback(show_version: bool) -> None:
+    """Print the installed version and exit, if `show_version` is set.
+
+    is_eager on the option that drives this means it fires before Typer
+    parses anything else, so `nepkit --version` works even though no
+    subcommand was given.
+
+    Parameters
+    ----------
+    show_version : bool
+        Whether `--version` was passed.
+
+    Raises
+    ------
+    typer.Exit
+        Always, when `show_version` is True -- printing the version is the
+        entire command.
+    """
+    if show_version:
+        typer.echo(f"nepkit {version('nepkit')}")
+        raise typer.Exit()
+
+
+VersionOption = Annotated[
+    bool,
+    typer.Option(
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
+]
+
+
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+def main(ctx: typer.Context, show_version: VersionOption = False) -> None:
     """Bikram Sambat <-> Gregorian date conversion.
 
     Parameters
@@ -268,6 +302,9 @@ def main(ctx: typer.Context) -> None:
     ctx : typer.Context
         Typer's invocation context, used to detect whether a subcommand was
         given.
+    show_version : bool, optional
+        Whether `--version` was passed. Handled entirely by
+        `_version_callback`; unused here beyond declaring the option.
     """
     if ctx.invoked_subcommand is not None:
         return
