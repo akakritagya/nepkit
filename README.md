@@ -173,7 +173,7 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.2.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
 Today  BS 2083-04-27   AD 2026-08-12 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
