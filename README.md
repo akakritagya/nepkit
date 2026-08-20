@@ -95,10 +95,11 @@ works as written.
 ```python
 from datetime import date
 
-from nepkit import BSDate, ad_to_bs, bs_to_ad
+from nepkit import BSDate, __version__, ad_to_bs, bs_to_ad
 
 bs_to_ad(BSDate(2081, 4, 15))  # date(2024, 7, 30)
 ad_to_bs(date(2024, 7, 30))  # BSDate(year=2081, month=4, day=15)
+__version__  # "0.3.0"
 ```
 
 `BSDate` validates on construction, so if you are holding one it is a real date
@@ -141,6 +142,9 @@ add` installs into the project's `.venv` without activating it, so reach the
 command with `uv run nepkit` — or activate the venv first.
 
 ```console
+$ nepkit --version
+nepkit 0.3.0
+
 $ nepkit bs2ad 2081-04-15
 2024-07-30 Tue
 
