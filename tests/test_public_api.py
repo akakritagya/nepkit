@@ -5,6 +5,7 @@ deliberate edit to this list, not a side effect of touching a module.
 """
 
 from datetime import date
+from importlib.metadata import version
 
 import nepkit
 from nepkit import BSDate, ad_to_bs, bs_to_ad
@@ -24,6 +25,7 @@ EXPECTED_PUBLIC_API = {
     "DateError",
     "InvalidDateError",
     "DateOutOfRangeError",
+    "__version__",
 }
 
 
@@ -34,6 +36,10 @@ def test_package_exports_exactly_the_documented_public_api() -> None:
 def test_every_exported_name_actually_resolves() -> None:
     missing = [name for name in nepkit.__all__ if not hasattr(nepkit, name)]
     assert not missing, f"listed in __all__ but not importable: {missing}"
+
+
+def test_dunder_version_matches_the_installed_package_metadata() -> None:
+    assert nepkit.__version__ == version("nepkit")
 
 
 def test_the_readme_usage_example_works() -> None:
