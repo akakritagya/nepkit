@@ -82,6 +82,12 @@ def test_malformed_input_exits_the_same_way_in_both_directions() -> None:
     assert bs.exit_code == ad.exit_code == 3
 
 
+def test_version_flag_prints_the_version_and_exits_0() -> None:
+    result = runner.invoke(cli.app, ["--version"])
+    assert result.exit_code == 0
+    assert version("nepkit") in result.stdout
+
+
 def test_bare_invocation_without_a_terminal_still_prints_help_and_exits_2() -> None:
     """A pipeline must never get an interactive prompt.
 
