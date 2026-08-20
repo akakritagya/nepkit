@@ -407,12 +407,13 @@ directly.
 ```python
 from datetime import date
 
-from nepkit import BSDate, ad_to_bs, bs_to_ad, days_in_month, BS_MONTH_NAMES
+from nepkit import BSDate, __version__, ad_to_bs, bs_to_ad, days_in_month, BS_MONTH_NAMES
 
 bs_to_ad(BSDate(2081, 4, 15))  # datetime.date(2024, 7, 30)
 ad_to_bs(date(2024, 7, 30))  # BSDate(year=2081, month=4, day=15)
 days_in_month(2081, 4)  # 32
 BS_MONTH_NAMES[3]  # 'Shrawan'
+__version__  # '0.3.0'
 ```
 
 `BSDate` validates on construction, so holding one means it is a real date in
@@ -444,12 +445,18 @@ convert".
 ## Help
 
 ```console
+$ nepkit --version
+nepkit 0.3.0
+```
+
+```console
 $ nepkit --help
  Usage: nepkit [OPTIONS] COMMAND [ARGS]...
 
  Bikram Sambat (BS) <-> Gregorian (AD) date conversion.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --version                     Show the version and exit.                     │
 │ --install-completion          Install completion for the current shell.      │
 │ --show-completion             Show completion for the current shell, to copy │
 │                               it or customize the installation.              │
