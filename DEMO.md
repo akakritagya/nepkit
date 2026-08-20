@@ -3,7 +3,7 @@
 Every command, every option, and every failure mode.
 
 All output below was captured by running the commands, not written by hand.
-Captured 2026-08-12 against v0.2.0 — anything involving *today* will differ when
+Captured 2026-08-12 against v0.3.0 — anything involving *today* will differ when
 you run it, and is marked where that matters.
 
 - [Conversions](#conversions)
@@ -220,7 +220,7 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.2.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
 Today  BS 2083-04-27   AD 2026-08-12 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
