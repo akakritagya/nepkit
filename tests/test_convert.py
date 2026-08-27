@@ -1,11 +1,20 @@
 """BS <-> AD conversion: the anchor arithmetic and the errors it raises."""
 
-from datetime import date
+from datetime import UTC, date, datetime, time
 
 import pytest
 
 from nepkit.calendar_data import ANCHOR, MAX_BS_YEAR, TOTAL_DAYS
-from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
+from nepkit.convert import (
+    MAX_AD_DATE,
+    MIN_AD_DATE,
+    BSDate,
+    BSDateTime,
+    ad_datetime_to_bs_datetime,
+    ad_to_bs,
+    bs_datetime_to_ad_datetime,
+    bs_to_ad,
+)
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 
 
@@ -73,3 +82,52 @@ def test_ad_window_is_derived_from_the_table() -> None:
     # the table's length, so extending calendar.json has to move both ends together.
     assert (date(1943, 4, 14), date(2034, 4, 13)) == (MIN_AD_DATE, MAX_AD_DATE)
     assert (MAX_AD_DATE - MIN_AD_DATE).days + 1 == TOTAL_DAYS
+
+
+def test_bsdatetime_defaults_to_midnight() -> None:
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15))
+    assert bdt.time == time(0, 0, 0)
+
+
+def test_bsdatetime_keeps_the_time_it_was_given() -> None:
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+    assert bdt.time == time(14, 32, 7)
+
+
+def test_bs_datetime_to_ad_datetime_carries_the_time_through_unchanged() -> None:
+    # BS 2081-04-15 = AD 2024-07-30, the same pair test_cli.py's conversion
+    # tests use -- only the time is new territory here.
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+    assert bs_datetime_to_ad_datetime(bdt) == datetime(2024, 7, 30, 14, 32, 7)
+
+
+def test_ad_datetime_to_bs_datetime_carries_the_time_through_unchanged() -> None:
+    bdt = ad_datetime_to_bs_datetime(datetime(2024, 7, 30, 14, 32, 7))
+    assert bdt == BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+
+
+@pytest.mark.parametrize(
+    "clock",
+    [time(0, 0, 0), time(14, 32, 7), time(23, 59, 59, 999999)],
+    ids=["midnight", "midday", "just_before_midnight"],
+)
+def test_bs_datetime_round_trips_at_a_few_points_in_the_day(clock: time) -> None:
+    # Not exhaustive like the pure-date property tests: the time component
+    # never touches the date arithmetic (see bs_datetime_to_ad_datetime's
+    # docstring), so a few representative points are enough to show it
+    # survives the round trip rather than being silently dropped.
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=clock)
+    assert ad_datetime_to_bs_datetime(bs_datetime_to_ad_datetime(bdt)) == bdt
+
+
+def test_ad_datetime_to_bs_datetime_rejects_a_tz_aware_value() -> None:
+    # Silently treating a UTC-aware value's clock digits as NPT would be
+    # quietly wrong by 5:45 -- this must fail loudly instead.
+    adt = datetime(2024, 7, 30, 14, 32, 7, tzinfo=UTC)
+    with pytest.raises(InvalidDateError, match="tzinfo"):
+        ad_datetime_to_bs_datetime(adt)
+
+
+def test_ad_datetime_to_bs_datetime_still_rejects_a_date_outside_the_window() -> None:
+    with pytest.raises(DateOutOfRangeError, match="1943-04-14 through 2034-04-13"):
+        ad_datetime_to_bs_datetime(datetime(2040, 1, 1, 9, 0))

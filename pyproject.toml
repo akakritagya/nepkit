@@ -26,6 +26,11 @@ dependencies = [
   # `import readline` starts succeeding and needs no platform branch. The
   # marker keeps every other platform's install unchanged.
   "pyreadline3>=3.5; sys_platform == 'win32'",
+  # zoneinfo.ZoneInfo("Asia/Kathmandu") needs an IANA tz database to resolve.
+  # Linux and macOS ship one; Windows does not, and raises ZoneInfoNotFoundError
+  # without this. Same marker pattern as pyreadline3, same reason: keep every
+  # other platform's install unchanged.
+  "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 description = "Typed Bikram Sambat ↔ Gregorian date conversion, as a library and a CLI."
 keywords = ["nepal", "bikram-sambat", "nepali-date", "calendar", "cli"]

@@ -13,7 +13,16 @@ from nepkit.calendar_data import (
     MIN_BS_YEAR,
     days_in_month,
 )
-from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
+from nepkit.convert import (
+    MAX_AD_DATE,
+    MIN_AD_DATE,
+    BSDate,
+    BSDateTime,
+    ad_datetime_to_bs_datetime,
+    ad_to_bs,
+    bs_datetime_to_ad_datetime,
+    bs_to_ad,
+)
 from nepkit.exceptions import (
     CalendarDataError,
     DateError,
@@ -34,13 +43,16 @@ __all__ = [
     "MIN_AD_DATE",
     "MIN_BS_YEAR",
     "BSDate",
+    "BSDateTime",
     "CalendarDataError",
     "DateError",
     "DateOutOfRangeError",
     "InvalidDateError",
     "NepkitError",
     "__version__",
+    "ad_datetime_to_bs_datetime",
     "ad_to_bs",
+    "bs_datetime_to_ad_datetime",
     "bs_to_ad",
     "days_in_month",
 ]
