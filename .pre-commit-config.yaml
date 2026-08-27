@@ -1,3 +1,5 @@
+fail_fast: true    # stop at the first failing hook
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -6,25 +8,33 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-toml
+      - id: check-merge-conflict
       - id: check-added-large-files
       - id: detect-private-key
       - id: no-commit-to-branch
         args: [--branch, main]
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.12.5
+    hooks:
+      - id: uv-lock          # keeps uv.lock in sync with pyproject.toml
 
   # ruff and mypy run through `uv run` (not the hosted mirror hooks) so they use
   # the exact versions pinned in pyproject.toml/uv.lock, not a separately
   # managed pre-commit venv that can drift from the project's own pins.
   - repo: local
     hooks:
-      - id: ruff-format
-        name: ruff format
-        entry: uv run ruff format
-        language: system
-        types: [python]
-
+      # check --fix runs first: it can leave lines needing re-wrapping, so
+      # format must run after it, not before.
       - id: ruff-check
         name: ruff check
         entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
         language: system
         types: [python]
 
