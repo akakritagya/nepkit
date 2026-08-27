@@ -207,6 +207,33 @@ nothing parsing stdout breaks on the one day a month a marker would appear.
 
 ---
 
+## Script
+
+`--script devanagari` renders BS dates in Devanagari on `bs2ad`, `ad2bs`,
+`today`, and `range` -- the commands that print a date rather than draw a
+grid:
+
+```console
+$ nepkit bs2ad 2081-04-15 --script devanagari
+२०२४-०७-३० मंगल
+
+$ nepkit range --script devanagari
+BS २०००-०१-०१ .. २०९०-१२-३०  (years २०००-२०९०)
+AD १९४३-०४-१४ .. २०३४-०४-१३
+```
+
+`--json` always stays canonical (Latin digits) regardless of `--script`, the
+same way `--color` is ignored there: machine-readable output should not shift
+shape based on a human-readability preference.
+
+`calbs`/`calad` don't take `--script` -- the grid renderer's own Devanagari
+support (`nepkit.render.bs_month_grid(..., devanagari=True)` and friends) is
+there for library use, not wired into those two commands. `BS_MONTH_NAMES_NE`
+is exported from the top-level package alongside `BS_MONTH_NAMES` for the
+same reason.
+
+---
+
 ## Interactive session
 
 Run `nepkit` with no arguments in a terminal. It clears the screen and opens a
@@ -499,8 +526,10 @@ $ nepkit calbs --help
 - **Extrapolate past the table.** There is no rule to extrapolate with; dates
   beyond BS 2000–2090 would have to be invented, so they raise instead.
 - **Guess a direction.** See the overlap note at the top.
-- **Time of day, timezones, Nepali month names in Devanagari, or Nepali
-  numerals.** Dates only.
+- **Time of day or timezones.** Dates only.
+- **Devanagari month names or Nepali numerals in the calendar grid.**
+  `calbs`/`calad` stay Latin -- see [Script](#script) for where Devanagari
+  is and isn't wired up.
 
 Correctness rests on the bundled table, and the test suite cannot prove it:
 both conversion directions read the same data, so a wrong month length cancels
