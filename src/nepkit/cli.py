@@ -45,6 +45,7 @@ from nepkit.render import (
     bs_month_grid,
     render_body_markup,
     render_plain,
+    to_devanagari_numerals,
     weekday_name,
 )
 
@@ -91,6 +92,23 @@ class ColorMode(StrEnum):
     auto = "auto"
     always = "always"
     never = "never"
+
+
+class Script(StrEnum):
+    """Which script to render human-readable dates in.
+
+    Attributes
+    ----------
+    latin
+        Romanised month names, ASCII digits (the current behaviour).
+    devanagari
+        Devanagari BS month names, Devanagari digits everywhere. Gregorian
+        month names (e.g. "July") have no Devanagari table and are always
+        Latin, whichever script is chosen.
+    """
+
+    latin = "latin"
+    devanagari = "devanagari"
 
 
 def _today() -> date:
@@ -418,20 +436,23 @@ def _parse_ad(text: str) -> date:
         raise InvalidDateError(f"AD {text} is not a real Gregorian date") from exc
 
 
-def _format_bs(bs: BSDate) -> str:
+def _format_bs(bs: BSDate, *, devanagari: bool = False) -> str:
     """Format a BSDate as zero-padded YYYY-MM-DD.
 
     Parameters
     ----------
     bs : BSDate
         The date to format.
+    devanagari : bool, optional
+        Render the digits in Devanagari. Default is False.
 
     Returns
     -------
     str
         The formatted date.
     """
-    return f"{bs.year:04d}-{bs.month:02d}-{bs.day:02d}"
+    text = f"{bs.year:04d}-{bs.month:02d}-{bs.day:02d}"
+    return to_devanagari_numerals(text) if devanagari else text
 
 
 def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -> None:
@@ -472,7 +493,9 @@ def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -
     # The subtitle goes inside the panel, not in its border: panel furniture is
     # clipped to the body width, and a span like "Ashadh 17 - Shrawan 16, 2081"
     # is wider than the 27-column grid, so the border ate the year.
-    body = f"[dim]{grid.subtitle.center(block_width(grid))}[/dim]\n{render_body_markup(grid)}"
+    width = block_width(grid)
+    markup_body = render_body_markup(grid)
+    body = f"[dim]{grid.subtitle.center(width)}[/dim]\n{markup_body}"
     Console(force_terminal=True).print(
         Panel.fit(body, title=f"[bold]{grid.title}[/bold]", border_style=ACCENT)
     )
@@ -480,6 +503,10 @@ def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -
 
 JsonOption = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
 ColorOption = Annotated[ColorMode, typer.Option("--color", help="When to colourise the grid.")]
+ScriptOption = Annotated[
+    Script,
+    typer.Option("--script", help="Script for human-readable dates. Ignored with --json."),
+]
 YearArg = Annotated[int | None, typer.Argument(help="Year. Defaults to the current one.")]
 MonthArg = Annotated[int | None, typer.Argument(help="Month, 1-12. Defaults to the current one.")]
 
@@ -488,6 +515,7 @@ MonthArg = Annotated[int | None, typer.Argument(help="Month, 1-12. Defaults to t
 def bs_to_ad_command(
     bs_date: Annotated[str, typer.Argument(metavar="BS_DATE", help="Bikram Sambat YYYY-MM-DD.")],
     as_json: JsonOption = False,
+    script: ScriptOption = Script.latin,
 ) -> None:
     """Convert a Bikram Sambat date to Gregorian.
 
@@ -497,6 +525,9 @@ def bs_to_ad_command(
         The Bikram Sambat date, YYYY-MM-DD.
     as_json : bool, optional
         Emit machine-readable JSON instead of plain text. Default is False.
+    script : Script, optional
+        Script for the printed date. Ignored when `as_json` is True.
+        Default is `Script.latin`.
     """
     with _reported_as_exit_code():
         bs = _parse_bs(bs_date)
@@ -505,14 +536,17 @@ def bs_to_ad_command(
         typer.echo(
             json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
         )
-    else:
-        typer.echo(f"{ad.isoformat()} {weekday_name(ad)}")
+        return
+    devanagari = script is Script.devanagari
+    ad_text = to_devanagari_numerals(ad.isoformat()) if devanagari else ad.isoformat()
+    typer.echo(f"{ad_text} {weekday_name(ad, devanagari=devanagari)}")
 
 
 @app.command("ad2bs", help="Convert a Gregorian date to Bikram Sambat.")
 def ad_to_bs_command(
     ad_date: Annotated[str, typer.Argument(metavar="AD_DATE", help="Gregorian YYYY-MM-DD.")],
     as_json: JsonOption = False,
+    script: ScriptOption = Script.latin,
 ) -> None:
     """Convert a Gregorian date to Bikram Sambat.
 
@@ -522,6 +556,9 @@ def ad_to_bs_command(
         The Gregorian date, YYYY-MM-DD.
     as_json : bool, optional
         Emit machine-readable JSON instead of plain text. Default is False.
+    script : Script, optional
+        Script for the printed date. Ignored when `as_json` is True.
+        Default is `Script.latin`.
     """
     with _reported_as_exit_code():
         ad = _parse_ad(ad_date)
@@ -530,42 +567,53 @@ def ad_to_bs_command(
         typer.echo(
             json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
         )
-    else:
-        typer.echo(f"{_format_bs(bs)} {weekday_name(ad)}")
+        return
+    devanagari = script is Script.devanagari
+    typer.echo(f"{_format_bs(bs, devanagari=devanagari)} {weekday_name(ad, devanagari=devanagari)}")
 
 
 @app.command("today", help="Print today's date in both calendars.")
-def today_command(as_json: JsonOption = False) -> None:
+def today_command(as_json: JsonOption = False, script: ScriptOption = Script.latin) -> None:
     """Print today's date in both calendars.
 
     Parameters
     ----------
     as_json : bool, optional
         Emit machine-readable JSON instead of plain text. Default is False.
+    script : Script, optional
+        Script for the printed dates. Ignored when `as_json` is True.
+        Default is `Script.latin`.
     """
     ad = _today()
     with _reported_as_exit_code():
         bs = ad_to_bs(ad)
-    day = weekday_name(ad)
     if as_json:
-        typer.echo(json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": day}))
+        typer.echo(
+            json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
+        )
         return
+    devanagari = script is Script.devanagari
+    day = weekday_name(ad, devanagari=devanagari)
+    ad_text = to_devanagari_numerals(ad.isoformat()) if devanagari else ad.isoformat()
     # Two labelled lines, the same shape `range` prints, so the two commands
     # that report a position in both calendars read alike. The weekday repeats
     # on both because they are one day: each line stays complete on its own
     # rather than sending a reader to the other for half the answer.
-    typer.echo(f"BS {_format_bs(bs)} {day}")
-    typer.echo(f"AD {ad.isoformat()} {day}")
+    typer.echo(f"BS {_format_bs(bs, devanagari=devanagari)} {day}")
+    typer.echo(f"AD {ad_text} {day}")
 
 
 @app.command("range", help="Print the date range nepkit has data for.")
-def range_command(as_json: JsonOption = False) -> None:
+def range_command(as_json: JsonOption = False, script: ScriptOption = Script.latin) -> None:
     """Print the date range nepkit has data for.
 
     Parameters
     ----------
     as_json : bool, optional
         Emit machine-readable JSON instead of plain text. Default is False.
+    script : Script, optional
+        Script for the printed range. Ignored when `as_json` is True.
+        Default is `Script.latin`.
     """
     bs_min, bs_max = f"{MIN_BS_YEAR:04d}-01-01", _format_bs(ad_to_bs(MAX_AD_DATE))
     if as_json:
@@ -581,8 +629,15 @@ def range_command(as_json: JsonOption = False) -> None:
             )
         )
         return
-    typer.echo(f"BS {bs_min} .. {bs_max}  (years {MIN_BS_YEAR}-{MAX_BS_YEAR})")
-    typer.echo(f"AD {MIN_AD_DATE.isoformat()} .. {MAX_AD_DATE.isoformat()}")
+    devanagari = script is Script.devanagari
+    years = f"{MIN_BS_YEAR}-{MAX_BS_YEAR}"
+    ad_min, ad_max = MIN_AD_DATE.isoformat(), MAX_AD_DATE.isoformat()
+    if devanagari:
+        bs_min, bs_max = to_devanagari_numerals(bs_min), to_devanagari_numerals(bs_max)
+        years = to_devanagari_numerals(years)
+        ad_min, ad_max = to_devanagari_numerals(ad_min), to_devanagari_numerals(ad_max)
+    typer.echo(f"BS {bs_min} .. {bs_max}  (years {years})")
+    typer.echo(f"AD {ad_min} .. {ad_max}")
 
 
 @app.command("calbs", help="Display a Bikram Sambat month.")

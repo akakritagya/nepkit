@@ -364,6 +364,76 @@ def test_cal_defaults_to_the_current_month(monkeypatch: pytest.MonkeyPatch) -> N
     assert runner.invoke(cli.app, ["calad"]).stdout.splitlines()[0].strip() == "July 2024"
 
 
+# --- --script devanagari -----------------------------------------------------
+
+
+def test_bs2ad_devanagari_prints_devanagari_digits_and_weekday() -> None:
+    result = runner.invoke(cli.app, ["bs2ad", "2081-04-15", "--script", "devanagari"])
+    assert result.exit_code == 0
+    assert result.stdout == "२०२४-०७-३० मंगल\n"
+
+
+def test_ad2bs_devanagari_prints_devanagari_digits_and_weekday() -> None:
+    result = runner.invoke(cli.app, ["ad2bs", "2024-07-30", "--script", "devanagari"])
+    assert result.exit_code == 0
+    assert result.stdout == "२०८१-०४-१५ मंगल\n"
+
+
+@pytest.mark.parametrize(
+    ("command", "argument"),
+    [("bs2ad", "2081-04-15"), ("ad2bs", "2024-07-30")],
+    ids=["bs2ad", "ad2bs"],
+)
+def test_json_ignores_script_devanagari(command: str, argument: str) -> None:
+    result = runner.invoke(cli.app, [command, argument, "--script", "devanagari", "--json"])
+    assert json.loads(result.stdout) == {
+        "bs": "2081-04-15",
+        "ad": "2024-07-30",
+        "weekday": "Tue",
+    }
+
+
+def test_today_devanagari(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    result = runner.invoke(cli.app, ["today", "--script", "devanagari"])
+    assert result.exit_code == 0
+    assert result.stdout == "BS २०८१-०४-१५ मंगल\nAD २०२४-०७-३० मंगल\n"
+
+
+def test_today_json_ignores_script_devanagari(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    result = runner.invoke(cli.app, ["today", "--script", "devanagari", "--json"])
+    assert json.loads(result.stdout) == {
+        "bs": "2081-04-15",
+        "ad": "2024-07-30",
+        "weekday": "Tue",
+    }
+
+
+def test_range_devanagari() -> None:
+    result = runner.invoke(cli.app, ["range", "--script", "devanagari"])
+    assert result.exit_code == 0
+    assert result.stdout == (
+        "BS २०००-०१-०१ .. २०९०-१२-३०  (years २०००-२०९०)\nAD १९४३-०४-१४ .. २०३४-०४-१३\n"
+    )
+
+
+def test_range_json_ignores_script_devanagari() -> None:
+    result = runner.invoke(cli.app, ["range", "--script", "devanagari", "--json"])
+    assert json.loads(result.stdout) == {
+        "bs": {"min": "2000-01-01", "max": "2090-12-30"},
+        "ad": {"min": "1943-04-14", "max": "2034-04-13"},
+    }
+
+
+@pytest.mark.parametrize("command", ["calbs", "calad"])
+def test_calendar_grid_commands_have_no_script_option(command: str) -> None:
+    """Deliberately scoped out: --script covers the plain conversion commands
+    and the library, not the grid renderer."""
+    result = runner.invoke(cli.app, [command, "--script", "devanagari"])
+    assert result.exit_code == 2
+
+
 def test_piped_output_is_free_of_ansi_escapes() -> None:
     # CliRunner is never a terminal, so this is exactly what a pipe would see.
     result = runner.invoke(cli.app, ["calbs", "2081", "4"])
