@@ -315,8 +315,11 @@ from its contract at no cost.
 
 ## Limitations
 
-- **Dates only.** No time of day, no timezones, no Nepali-language month names
-  or numeral formatting.
+- **Dates only.** No time of day, no timezones.
+- **Devanagari formatting stops at the calendar grid.** `--script devanagari`
+  covers `bs2ad`/`ad2bs`/`today`/`range` and the library
+  (`nepkit.BS_MONTH_NAMES_NE`, `nepkit.render`'s grid functions); `calbs` and
+  `calad` render Latin only. See [DEMO.md](https://github.com/akakritagya/nepkit/blob/main/DEMO.md#script).
 - **The range is hard-bounded** at BS 2000–2090 and will not extrapolate.
 - **Correctness rests on the data, and round-trip tests alone cannot prove
   it.** The property suite verifies self-consistency exhaustively — every one

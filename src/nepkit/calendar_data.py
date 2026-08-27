@@ -32,6 +32,29 @@ BS_MONTH_NAMES: Final[tuple[str, ...]] = (
     "Falgun",
     "Chaitra",
 )
+
+# The colloquial spellings a Nepali calendar actually prints, not the formal
+# Sanskritised alternatives (जेष्ठ, आषाढ, श्रावण, भाद्र, आश्विन, पौष, फाल्गुन, चैत्र
+# all exist and are "more correct" in a dictionary sense). Kartik took the one
+# exception -- कार्तिक over the colloquial कात्तिक -- because that is what
+# hamropatro.com's own month heading prints, cross-checked against the same
+# real calendar product for Jestha, Shrawan, Bhadra, Poush, and Chaitra too,
+# not just an encyclopedia table. Same move as BS_MONTH_NAMES picking one
+# Romanisation out of several real ones; pinned by a test for the same reason.
+BS_MONTH_NAMES_NE: Final[tuple[str, ...]] = (
+    "बैशाख",
+    "जेठ",
+    "असार",
+    "साउन",
+    "भदौ",
+    "असोज",
+    "कार्तिक",
+    "मंसिर",
+    "पुष",
+    "माघ",
+    "फागुन",
+    "चैत",
+)
 _MIN_DAYS_IN_MONTH: Final[int] = 29
 _MAX_DAYS_IN_MONTH: Final[int] = 32
 _MIN_DAYS_IN_YEAR: Final[int] = 365
