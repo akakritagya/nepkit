@@ -77,6 +77,8 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 # Tests document intent through names and assertions, not docstrings.
 "tests/**/*.py" = ["D", "S101"]
+# The two fetched URLs are hardcoded module constants, never external input.
+"scripts/*.py" = ["S310"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -92,6 +94,9 @@ addopts = [
   "--cov-report=term-missing",
 ]
 testpaths = ["tests"]
+# Lets test_verify_calendar_sources.py import the standalone script directly,
+# the same way it would run: `import verify_calendar_sources`, no package needed.
+pythonpath = ["scripts"]
 xfail_strict = true
 filterwarnings = ["error"]
 
@@ -104,7 +109,7 @@ exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 show_missing = true
 
 [tool.mypy]
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 python_executable = ".venv/bin/python"
 python_version = "3.12"
 strict = true

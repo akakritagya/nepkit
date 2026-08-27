@@ -39,9 +39,15 @@ to cross-check source A, not as copied code or copied text.
    date-converter tool (unrelated codebase to A or B) states the same
    pairing. This is the value pinned as `ANCHOR` in `calendar_data.py`.
 
-Script used for steps 2–4 was a throwaway (`diff_sources.py`, not checked
-into this repo) — the empty diff and the reconciled table it produced are
-what's committed here, not the script itself.
+Script used for steps 2–4 was originally a throwaway, not checked into this
+repo — the empty diff and the reconciled table it produced were what got
+committed, not the script itself. That check is now rerunnable:
+[`scripts/verify_calendar_sources.py`](https://github.com/akakritagya/nepkit/blob/main/scripts/verify_calendar_sources.py)
+re-fetches both sources' current tables and re-diffs them against each other
+and against `calendar.json`, so a later revision to either upstream table
+surfaces on the next run rather than staying invisible until someone thinks to
+redo this sourcing document by hand. Run it with
+`uv run python scripts/verify_calendar_sources.py`.
 
 ## Scope
 
