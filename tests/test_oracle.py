@@ -64,6 +64,21 @@ ORACLE_PAIRS: tuple[OraclePair, ...] = (
         states="Democracy Day is Falgun 7, marking democracy established in 1951 AD (2007 BS).",
     ),
     OraclePair(
+        event="king mahendra's royal coup",
+        bs=BSDate(2017, 9, 1),
+        ad=date(1960, 12, 15),
+        sources=(
+            "https://english.khabarhub.com/2024/16/419650/",
+            "https://en.wikipedia.org/wiki/1960_Nepal_coup_d%27%C3%A9tat",
+        ),
+        states=(
+            "Khabarhub: 'on Poush 1, 2017 BS, King Mahendra arrested several popular "
+            "leaders'. Wikipedia's infobox gives the same coup's date as '15 December "
+            "1960'. Neither converted anything -- each recorded it natively, same as "
+            "the federal-republic pair below."
+        ),
+    ),
+    OraclePair(
         event="jana andolan i begins",
         bs=BSDate(2046, 11, 7),
         ad=date(1990, 2, 18),
@@ -105,6 +120,16 @@ ORACLE_PAIRS: tuple[OraclePair, ...] = (
         ad=date(2024, 4, 13),
         sources=("https://anmn.org/saturday-13th-april-2024-proclaimed-as-nepali-new-year/",),
         states="Saturday 13 April 2024 proclaimed as Nepali New Year 2081, i.e. Baisakh 1.",
+    ),
+    OraclePair(
+        event="nepali new year 2083",
+        bs=BSDate(2083, 1, 1),
+        ad=date(2026, 4, 14),
+        sources=(
+            "https://www.newsonair.gov.in/nepal-begins-new-year-celebrations-with-bisket-jatra-in-bhaktapur",
+        ),
+        states="'April 14 is Baisakh 1 as per the Nepali calendar for the year 2083 as per "
+        "Bikram Sambat' -- reported the day the year began, not computed after the fact.",
     ),
 )
 
