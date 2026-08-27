@@ -13,7 +13,7 @@ The contract these tests pin down:
 import builtins
 import json
 import re
-from datetime import date
+from datetime import date, datetime
 from importlib.metadata import version
 
 import pytest
@@ -101,10 +101,10 @@ def test_bare_invocation_without_a_terminal_still_prints_help_and_exits_2() -> N
 
 def test_bare_invocation_on_a_terminal_starts_a_repl(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
-    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 14, 32, 7))
     result = runner.invoke(cli.app, [], input="today\nbs2ad 2081-04-15\nquit\n")
     assert result.exit_code == 0
-    assert "BS 2081-04-15" in result.stdout  # today
+    assert "BS 2081-04-15 14:32" in result.stdout  # today
     assert "2024-07-30" in result.stdout  # the conversion
 
 
@@ -112,13 +112,14 @@ def test_the_repl_opens_with_an_ascii_title_and_app_info(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
-    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 14, 32, 7))
     out = runner.invoke(cli.app, [], input="quit\n").stdout
 
     assert "|_| |_|" in out, "the ascii title is missing"
     assert version("nepkit") in out
     assert "Bikram Sambat" in out
     assert "BS 2081-04-15" in out and "AD 2024-07-30" in out, "today is not shown"
+    assert "14:32" in out, "the current time is not shown"
 
 
 def test_the_banner_survives_a_clock_outside_the_supported_range(
@@ -130,7 +131,7 @@ def test_the_banner_survives_a_clock_outside_the_supported_range(
     from starting.
     """
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
-    monkeypatch.setattr(cli, "_today", lambda: date(2040, 1, 1))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2040, 1, 1, 9, 0))
     result = runner.invoke(cli.app, [], input="bs2ad 2081-04-15\nquit\n")
     assert result.exit_code == 0
     assert "|_| |_|" in result.stdout
@@ -193,6 +194,21 @@ def test_line_editing_is_available_on_this_platform() -> None:
     here rather than shipping a REPL whose Up/Down key silently does nothing.
     """
     assert cli._enable_line_editing() is True
+
+
+def test_now_npt_resolves_nepal_standard_time_on_this_platform() -> None:
+    """The one call in the suite that does not mock `_now_npt`.
+
+    Every other test patches this seam for determinism, which would hide a
+    real failure to resolve Asia/Kathmandu. On Windows specifically,
+    zoneinfo ships no bundled tz database and needs the tzdata package (see
+    pyproject.toml) to resolve this at all -- if that dependency ever stops
+    covering the platforms it claims to, the Windows job fails here rather
+    than shipping a `today`/banner whose time is silently wrong.
+    """
+    now = cli._now_npt()
+    assert now.tzinfo is None
+    assert isinstance(now, datetime)
 
 
 def test_line_editing_survives_a_readline_that_explodes(
@@ -305,22 +321,24 @@ def test_json_output_carries_both_calendars(command: str, argument: str) -> None
 def test_today_uses_the_injectable_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     # Without this seam the suite would be time-dependent, and would start
     # failing for real once the clock passes the end of the table in 2034.
-    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 14, 32, 7))
     result = runner.invoke(cli.app, ["today"])
     assert result.exit_code == 0
     # Two labelled lines, matching `range`: both commands answer "where are we
-    # in each calendar?" and should not be formatted differently. The weekday
-    # repeats on both because they are one day -- each line stays readable on
-    # its own rather than sending you to the other for half the answer.
-    assert result.stdout == "BS 2081-04-15 Tue\nAD 2024-07-30 Tue\n"
+    # in each calendar?" and should not be formatted differently. The time and
+    # weekday repeat on both because they are one moment -- each line stays
+    # readable on its own rather than sending you to the other for half the
+    # answer. Minutes only: seconds are more precision than a banner needs.
+    assert result.stdout == "BS 2081-04-15 14:32 Tue\nAD 2024-07-30 14:32 Tue\n"
 
 
 def test_today_json_carries_both_calendars(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 14, 32, 7))
     result = runner.invoke(cli.app, ["today", "--json"])
     assert json.loads(result.stdout) == {
         "bs": "2081-04-15",
         "ad": "2024-07-30",
+        "time": "14:32:07",
         "weekday": "Tue",
     }
 
@@ -328,7 +346,7 @@ def test_today_json_carries_both_calendars(monkeypatch: pytest.MonkeyPatch) -> N
 def test_today_exits_4_when_the_clock_is_outside_the_table(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(cli, "_today", lambda: date(2040, 1, 1))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2040, 1, 1, 9, 0))
     result = runner.invoke(cli.app, ["today"])
     assert result.exit_code == 4
     assert result.stdout == ""
@@ -394,18 +412,19 @@ def test_json_ignores_script_devanagari(command: str, argument: str) -> None:
 
 
 def test_today_devanagari(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 14, 32, 7))
     result = runner.invoke(cli.app, ["today", "--script", "devanagari"])
     assert result.exit_code == 0
-    assert result.stdout == "BS २०८१-०४-१५ मंगल\nAD २०२४-०७-३० मंगल\n"
+    assert result.stdout == "BS २०८१-०४-१५ १४:३२ मंगल\nAD २०२४-०७-३० १४:३२ मंगल\n"
 
 
 def test_today_json_ignores_script_devanagari(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "_today", lambda: date(2024, 7, 30))
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 14, 32, 7))
     result = runner.invoke(cli.app, ["today", "--script", "devanagari", "--json"])
     assert json.loads(result.stdout) == {
         "bs": "2081-04-15",
         "ad": "2024-07-30",
+        "time": "14:32:07",
         "weekday": "Tue",
     }
 

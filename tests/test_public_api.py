@@ -12,8 +12,11 @@ from nepkit import BSDate, ad_to_bs, bs_to_ad
 
 EXPECTED_PUBLIC_API = {
     "BSDate",
+    "BSDateTime",
     "bs_to_ad",
     "ad_to_bs",
+    "bs_datetime_to_ad_datetime",
+    "ad_datetime_to_bs_datetime",
     "days_in_month",
     "BS_MONTH_NAMES",
     "BS_MONTH_NAMES_NE",

@@ -70,14 +70,19 @@ $ nepkit ad2bs 2024-07-30 --json
 
 ```console
 $ nepkit today
-BS 2083-04-27 Wed
-AD 2026-08-12 Wed
+BS 2083-04-27 14:32 Wed
+AD 2026-08-12 14:32 Wed
 
 $ nepkit today --json
-{"bs": "2083-04-27", "ad": "2026-08-12", "weekday": "Wed"}
+{"bs": "2083-04-27", "ad": "2026-08-12", "time": "14:32:07", "weekday": "Wed"}
 ```
 
-> Output varies with the date.
+The time is always Nepal Standard Time (UTC+05:45), regardless of what
+timezone the machine running `nepkit` is actually set to -- both lines show
+the same clock reading because they are one moment, just in two calendars.
+Minutes only in the plain output; `--json`'s `time` field carries seconds.
+
+> Output varies with the date and time.
 
 ```console
 $ nepkit range
@@ -443,6 +448,32 @@ BS_MONTH_NAMES[3]  # 'Shrawan'
 __version__  # '0.3.0'
 ```
 
+`BSDateTime` adds a time of day, in Nepal Standard Time -- both calendars
+change date at the same midnight instant in NPT, so the time carries straight
+through the conversion unchanged:
+
+```python
+from datetime import datetime, time
+
+from nepkit import BSDateTime, ad_datetime_to_bs_datetime, bs_datetime_to_ad_datetime
+
+bs_datetime_to_ad_datetime(BSDateTime(BSDate(2081, 4, 15), time(14, 32, 7)))
+# datetime.datetime(2024, 7, 30, 14, 32, 7)
+
+ad_datetime_to_bs_datetime(datetime(2024, 7, 30, 14, 32, 7))
+# BSDateTime(date=BSDate(year=2081, month=4, day=15), time=datetime.time(14, 32, 7))
+```
+
+Both take and return naive values, understood as NPT. A tz-aware `datetime`
+is rejected rather than silently reinterpreted:
+
+```python
+from datetime import UTC
+
+ad_datetime_to_bs_datetime(datetime(2024, 7, 30, 14, 32, 7, tzinfo=UTC))
+# raises InvalidDateError -- convert to NPT with .astimezone() first
+```
+
 `BSDate` validates on construction, so holding one means it is a real date in
 the supported range:
 
@@ -526,7 +557,12 @@ $ nepkit calbs --help
 - **Extrapolate past the table.** There is no rule to extrapolate with; dates
   beyond BS 2000–2090 would have to be invented, so they raise instead.
 - **Guess a direction.** See the overlap note at the top.
-- **Time of day or timezones.** Dates only.
+- **Convert between timezones.** `BSDateTime` and the library's
+  `bs_datetime_to_ad_datetime`/`ad_datetime_to_bs_datetime` work only in
+  Nepal Standard Time (UTC+05:45) -- a tz-aware `datetime` is rejected, not
+  silently reinterpreted. Convert to NPT yourself first. There is no
+  `--time` flag on `bs2ad`/`ad2bs`; only `today` and the interactive
+  session's banner show a time.
 - **Devanagari month names or Nepali numerals in the calendar grid.**
   `calbs`/`calad` stay Latin -- see [Script](#script) for where Devanagari
   is and isn't wired up.

@@ -5,7 +5,7 @@ out the other side; the AD-side expander is datetime.date arithmetic.
 """
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Final
 
 from nepkit.calendar_data import (
@@ -15,7 +15,7 @@ from nepkit.calendar_data import (
     check_bs_date,
     days_from_anchor,
 )
-from nepkit.exceptions import DateOutOfRangeError
+from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 
 # Computed from ANCHOR plus the table's length, never written down as literals.
 # ANCHOR.ad_date is the only AD fact in the package that cannot be derived (see
@@ -95,3 +95,83 @@ def ad_to_bs(ad: date) -> BSDate:
         )
     year, month, day = bs_from_days((ad - ANCHOR.ad_date).days)
     return BSDate(year=year, month=month, day=day)
+
+
+@dataclass(frozen=True, slots=True)
+class BSDateTime:
+    """A Bikram Sambat date and time, in Nepal Standard Time (UTC+05:45).
+
+    Composes a validated BSDate with a stdlib time-of-day rather than
+    reinventing hour/minute/second/microsecond validation nepkit does not
+    need to own. The civil BS calendar changes date at midnight NPT, the
+    same convention any other civil calendar uses -- the sunrise-based day
+    start belongs to the separate Hindu panchang/tithi system nepkit does
+    not model. nepkit works only in NPT: see `bs_datetime_to_ad_datetime`
+    and `ad_datetime_to_bs_datetime` for what that means for conversion.
+
+    Parameters
+    ----------
+    date : BSDate
+        The Bikram Sambat date.
+    time : datetime.time, optional
+        The time of day, in Nepal Standard Time. Default is midnight.
+    """
+
+    date: BSDate
+    time: time = time()
+
+
+def bs_datetime_to_ad_datetime(bdt: BSDateTime) -> datetime:
+    """Convert a Bikram Sambat date and time to its Gregorian equivalent.
+
+    Both calendars change date at the same midnight instant in Nepal
+    Standard Time, so only the date half needs converting -- the time of
+    day carries straight through unchanged.
+
+    Parameters
+    ----------
+    bdt : BSDateTime
+        The Bikram Sambat date and time to convert, in Nepal Standard Time.
+
+    Returns
+    -------
+    datetime.datetime
+        The equivalent Gregorian date and time, naive, in Nepal Standard
+        Time.
+    """
+    return datetime.combine(bs_to_ad(bdt.date), bdt.time)
+
+
+def ad_datetime_to_bs_datetime(adt: datetime) -> BSDateTime:
+    """Convert a Gregorian date and time to its Bikram Sambat equivalent.
+
+    Parameters
+    ----------
+    adt : datetime.datetime
+        The Gregorian date and time to convert. Must be naive -- nepkit
+        works only in Nepal Standard Time and does not convert between
+        timezones. A tz-aware value should be converted to NPT with
+        `astimezone` and stripped of its tzinfo before calling this.
+
+    Returns
+    -------
+    BSDateTime
+        The equivalent Bikram Sambat date and time, in Nepal Standard Time.
+
+    Raises
+    ------
+    InvalidDateError
+        If `adt` carries tzinfo. Silently treating a tz-aware value's clock
+        digits as NPT would produce an answer that is quietly wrong by
+        whatever the real offset is, rather than failing loudly the way
+        every other malformed input to this package does.
+    DateOutOfRangeError
+        If `adt`'s date is outside `[MIN_AD_DATE, MAX_AD_DATE]`.
+    """
+    if adt.tzinfo is not None:
+        raise InvalidDateError(
+            f"{adt.isoformat()} carries tzinfo -- nepkit works only in Nepal "
+            "Standard Time; convert to NPT and strip tzinfo before calling "
+            "ad_datetime_to_bs_datetime"
+        )
+    return BSDateTime(date=ad_to_bs(adt.date()), time=adt.time())

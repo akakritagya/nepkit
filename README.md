@@ -315,7 +315,13 @@ from its contract at no cost.
 
 ## Limitations
 
-- **Dates only.** No time of day, no timezones.
+- **Time of day works only in Nepal Standard Time (UTC+05:45).** `BSDateTime`
+  and `bs_datetime_to_ad_datetime`/`ad_datetime_to_bs_datetime` carry a
+  naive time-of-day through the date conversion; nepkit does not convert
+  between timezones. A tz-aware `datetime` is rejected outright rather than
+  silently treated as NPT — convert it yourself with `astimezone` first. In
+  the CLI, only `today` and the interactive banner show the time; there is
+  no `--time` flag on `bs2ad`/`ad2bs`.
 - **Devanagari formatting stops at the calendar grid.** `--script devanagari`
   covers `bs2ad`/`ad2bs`/`today`/`range` and the library
   (`nepkit.BS_MONTH_NAMES_NE`, `nepkit.render`'s grid functions); `calbs` and
