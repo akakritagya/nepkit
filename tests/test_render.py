@@ -76,6 +76,24 @@ def test_render_plain_centres_the_headings_over_the_week_columns() -> None:
     assert all(len(line) <= len(WEEKDAY_HEADER) for line in rendered)
 
 
+def test_render_plain_title_and_subtitle_match_str_center_exactly() -> None:
+    """Pins the exact leading whitespace, not just the stripped text.
+
+    str.center(width) splits its padding margin // 2 left, the rest right,
+    except it puts one extra column on the left when both the margin and
+    the width are odd -- a rounding rule `_center` has to replicate exactly
+    since its callers immediately strip the trailing half. A simpler
+    `margin // 2` looks right under every test that only checks the
+    stripped text, and shipped exactly that once, shifting every centred
+    Latin title by a column from what str.center had always produced.
+    """
+    rendered = render_plain(bs_month_grid(2081, 4)).splitlines()
+    title, subtitle = "Shrawan 2081", "16 Jul - 16 Aug 2024"
+    width = len(WEEKDAY_HEADER)
+    assert rendered[0] == title.center(width).rstrip()
+    assert rendered[1] == subtitle.center(width).rstrip()
+
+
 def test_a_subtitle_wider_than_the_grid_centres_the_grid_under_it() -> None:
     """AD 2026-04 spans 'Chaitra 18 - Baisakh 17, 2082/2083' -- 34 columns to the
     grid's 27. The block is as wide as the subtitle, so the grid has to move to

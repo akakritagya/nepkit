@@ -108,10 +108,16 @@ def _pad_left(text: str, width: int) -> str:
 def _center(text: str, width: int) -> str:
     """Centre `text` within `width` terminal columns, trailing padding stripped.
 
-    Not `text.center(width).rstrip()`: same code-point-vs-terminal-column gap
-    as `_pad_left`, and since the trailing half of `str.center`'s padding gets
-    stripped straight back off anyway, only the leading half is worth getting
-    right.
+    Not `text.center(width).rstrip()`: `str.center` measures by code-point
+    count, which disagrees with terminal-column width for Devanagari text
+    (see `_pad_left`). This replicates `str.center`'s own left/right split
+    -- `margin // 2`, plus one extra column on the left when both the
+    margin and the target width are odd -- rather than a plain `margin //
+    2`, which was tried first here and silently shifted every centred
+    Latin title by a column versus what `str.center` had always produced,
+    caught only by re-diffing DEMO.md's captured output against a live run
+    after the fact. Only the leading half matters: the trailing half gets
+    stripped right back off by every caller.
 
     Parameters
     ----------
@@ -123,9 +129,11 @@ def _center(text: str, width: int) -> str:
     Returns
     -------
     str
-        `text`, preceded by half the padding needed to fill `width` columns.
+        `text`, preceded by the padding `str.center(width)` would put
+        before it.
     """
-    return " " * (max(0, width - cell_len(text)) // 2) + text
+    margin = max(0, width - cell_len(text))
+    return " " * (margin // 2 + (margin & width & 1)) + text
 
 
 def _header_row(abbreviations: tuple[str, ...], *, width: int) -> str:

@@ -357,13 +357,13 @@ $ nepkit bs2ad 2095-01-01
 BS year 2095 is outside the bundled range [2000, 2090]  # stderr, exit 4
 
 $ nepkit ad2bs 2040-01-01
-AD 2040-01-01 is outside the convertible window 1943-04-14 through 2034-04-13
+AD 2040-01-01 is outside the convertible window 1943-04-14 through 2034-04-13  # stderr, exit 4
 
 $ nepkit calbs 2095 1
 BS year 2095 is outside the bundled range [2000, 2090]  # stderr, exit 4
 
 $ nepkit calad 2034 4
-AD 2034-04 is not fully inside the convertible window 1943-04-14 through 2034-04-13
+AD 2034-04 is not fully inside the convertible window 1943-04-14 through 2034-04-13  # stderr, exit 4
 ```
 
 `calad` refuses a month it cannot draw in full — April 1943 is convertible only
