@@ -46,7 +46,8 @@ committed, not the script itself. That check is now rerunnable:
 re-fetches both sources' current tables and re-diffs them against each other
 and against `calendar.json`, so a later revision to either upstream table
 surfaces on the next run rather than staying invisible until someone thinks to
-redo this sourcing document by hand. Run it with
+redo this sourcing document by hand. It runs monthly in CI
+(`.github/workflows/verify-calendar-sources.yml`) and can be run locally with
 `uv run python scripts/verify_calendar_sources.py`.
 
 ## Scope
