@@ -57,3 +57,26 @@ back to 1970, B goes up to 2099) — this matches the range decided for
 nepkit. If the range ever needs to extend past 2090 or before 2000, redo
 this sourcing process for the new years rather than assuming either source
 is reliable outside the range checked here.
+
+**Attempted, 2026-08-28: extending forward to 2099.** Source A stops at
+2090, so 2091–2099 would already have been single-source on source B alone.
+It turned out worse than that: source B's own row for BS 2096 is
+`[30, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30]`, which sums to 364 days —
+no real BS year is outside [365, 366], the same invariant `BSYearData`
+enforces on load. Four more candidate sources were checked for a fix:
+[sharingapples/nepali-date](https://github.com/sharingapples/nepali-date)
+and
+[S4NKALP/nepali-calendar-api](https://github.com/S4NKALP/nepali-calendar-api)
+don't reach BS 2096 at all (their tables stop at 2088 and "the present"
+respectively).
+[remotemerge/nepali-date-converter](https://github.com/remotemerge/nepali-date-converter)
+and
+[askbuddie/bikram-sambat](https://github.com/askbuddie/bikram-sambat) both
+reach it, but each disagrees with the already-verified 2000–2090 core when
+cross-checked against it (7 of 91 years, and 5 of 5 checked years,
+respectively) — an unreliable source agreeing with source B on the 2096
+figure is not corroboration, it is as likely a shared upstream error as an
+independent confirmation. No source was found that could confirm or correct
+BS 2096, or vouch for the rest of 2091–2099 the one bad row was found in.
+The range was left at 2000–2090 rather than ship data with a known-bad row
+patched over by guesswork, or an unverifiable one left in.
