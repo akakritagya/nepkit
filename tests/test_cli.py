@@ -88,6 +88,10 @@ def test_version_flag_prints_the_version_and_exits_0() -> None:
     assert version("nepkit") in result.stdout
 
 
+def test_short_version_flag_matches_the_long_one() -> None:
+    assert runner.invoke(cli.app, ["-v"]).stdout == runner.invoke(cli.app, ["--version"]).stdout
+
+
 def test_bare_invocation_without_a_terminal_still_prints_help_and_exits_2() -> None:
     """A pipeline must never get an interactive prompt.
 
@@ -299,6 +303,19 @@ def test_an_unknown_command_exits_2_as_a_usage_error() -> None:
 
 def test_help_exits_zero() -> None:
     assert runner.invoke(cli.app, ["--help"]).exit_code == 0
+
+
+def test_short_help_flag_matches_the_long_one() -> None:
+    assert runner.invoke(cli.app, ["-h"]).stdout == runner.invoke(cli.app, ["--help"]).stdout
+
+
+def test_short_help_flag_works_on_a_subcommand_too() -> None:
+    # -h comes from context_settings on the Typer app, not a per-command
+    # option -- this is what proves it actually propagates to subcommands
+    # rather than only working at the top level.
+    result = runner.invoke(cli.app, ["calbs", "-h"])
+    assert result.exit_code == 0
+    assert result.stdout == runner.invoke(cli.app, ["calbs", "--help"]).stdout
 
 
 @pytest.mark.parametrize(
