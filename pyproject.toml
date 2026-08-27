@@ -53,32 +53,54 @@ requires = ["uv_build>=0.12.1,<0.13.0"]
 [tool.ruff]
 indent-width = 4
 line-length = 100
+required-version = ">=0.16,<0.17"
+show-fixes = true
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF", "D"]
+dummy-variable-rgx = "^_.*$" # underscore-prefixed names are intentionally unused
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF", "D", "S", "PTH", "C901", "PLR0913"]
+unfixable = ["F401", "F841"] # flag unused imports/vars, don't silently delete them
+
+[tool.ruff.lint.isort]
+known-first-party = ["nepkit"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10 # branches per function before ruff says "split this"
+
+[tool.ruff.lint.pylint]
+max-args = 7 # parameters per function; self/cls don't count
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 # Tests document intent through names and assertions, not docstrings.
-"tests/*" = ["D"]
+"tests/**/*.py" = ["D", "S101"]
 
 [tool.ruff.format]
 docstring-code-format = true
 line-ending = "lf"
 
 [tool.pytest.ini_options]
-addopts = "-q --strict-markers --strict-config"
+addopts = [
+  "-q",
+  "--strict-markers",
+  "--strict-config",
+  "--import-mode=importlib",
+  "--cov=nepkit",
+  "--cov-report=term-missing",
+]
 testpaths = ["tests"]
+xfail_strict = true
+filterwarnings = ["error"]
 
 [tool.coverage.run]
 branch = true
 source = ["nepkit"]
 
 [tool.coverage.report]
-exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 show_missing = true
 
 [tool.mypy]
@@ -86,3 +108,5 @@ files = ["src", "tests"]
 python_executable = ".venv/bin/python"
 python_version = "3.12"
 strict = true
+warn_unreachable = true
+pretty = true
