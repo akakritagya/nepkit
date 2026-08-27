@@ -16,6 +16,7 @@ EXPECTED_PUBLIC_API = {
     "ad_to_bs",
     "days_in_month",
     "BS_MONTH_NAMES",
+    "BS_MONTH_NAMES_NE",
     "MIN_BS_YEAR",
     "MAX_BS_YEAR",
     "MIN_AD_DATE",
