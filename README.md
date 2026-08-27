@@ -318,14 +318,21 @@ from its contract at no cost.
 - **Dates only.** No time of day, no timezones, no Nepali-language month names
   or numeral formatting.
 - **The range is hard-bounded** at BS 2000–2090 and will not extrapolate.
-- **Correctness rests on the data, and the tests cannot prove it.** The test
-  suite verifies self-consistency exhaustively — every one of the 33,238 days
-  round-trips, and consecutive day counts produce consecutive dates. But both
-  directions read the same table, so a wrong month length cancels out exactly
-  and every property still passes. This was verified by deliberately corrupting
-  the table: all properties passed while conversions were silently wrong. Only
-  the sourcing described in [`src/nepkit/data/DATA.md`](https://github.com/akakritagya/nepkit/blob/main/src/nepkit/data/DATA.md)
-  stands behind the numbers themselves.
+- **Correctness rests on the data, and round-trip tests alone cannot prove
+  it.** The property suite verifies self-consistency exhaustively — every one
+  of the 33,238 days round-trips, and consecutive day counts produce
+  consecutive dates. But both directions read the same table, so a wrong
+  month length cancels out exactly and every property still passes. This was
+  verified by deliberately corrupting the table: all properties passed while
+  conversions were silently wrong. Two things stand behind the numbers
+  themselves instead: the independent sourcing in
+  [`src/nepkit/data/DATA.md`](https://github.com/akakritagya/nepkit/blob/main/src/nepkit/data/DATA.md),
+  and [`tests/test_oracle.py`](https://github.com/akakritagya/nepkit/blob/main/tests/test_oracle.py),
+  which checks conversions against a handful of BS↔AD dates attested by
+  sources with no connection to nepkit or to either source table. Both are a
+  sample, not a proof — the oracle pairs cover select decades, and nothing
+  past today can ever be externally attested, since the table's later years
+  (toward BS 2090) haven't happened yet.
 
 ## Data provenance
 
