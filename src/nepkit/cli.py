@@ -24,10 +24,11 @@ import shlex
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from importlib.metadata import version
 from typing import Annotated, Final
+from zoneinfo import ZoneInfo
 
 import typer
 from rich.console import Console
@@ -124,6 +125,26 @@ def _today() -> date:
     return date.today()
 
 
+def _now_npt() -> datetime:
+    """Return the current date and time in Nepal Standard Time, naive.
+
+    Separate from `_today()`, and not built on top of it: the two commands
+    that show a time (`today`, and the REPL banner) need their date and
+    time to come from the same clock read, or the two could disagree by a
+    few milliseconds at a day boundary. Everywhere else keeps using
+    `_today()`, unaffected by this.
+
+    Seam for tests. Patch this rather than the clock itself.
+
+    Returns
+    -------
+    datetime.datetime
+        The current NPT date and time, tzinfo stripped -- nepkit's
+        conversion functions work only with naive NPT values.
+    """
+    return datetime.now(ZoneInfo("Asia/Kathmandu")).replace(tzinfo=None)
+
+
 def _stdin_is_interactive() -> bool:
     """Report whether stdin is a live terminal.
 
@@ -201,14 +222,18 @@ def _today_line() -> str:
     str
         A rich-markup line for the REPL banner.
     """
-    ad = _today()
+    now = _now_npt()
+    ad = now.date()
     day = weekday_name(ad)
+    time_text = now.strftime("%H:%M")
     if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
         return (
-            f"[dim]Today [/dim] AD {ad.isoformat()} {day}  [dim](outside the supported range)[/dim]"
+            f"[dim]Today [/dim] {time_text} NPT  AD {ad.isoformat()} {day}  "
+            "[dim](outside the supported range)[/dim]"
         )
     return (
-        f"[dim]Today [/dim] BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()} {day}"
+        f"[dim]Today [/dim] {time_text} NPT  "
+        f"BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()} {day}"
     )
 
 
@@ -584,23 +609,37 @@ def today_command(as_json: JsonOption = False, script: ScriptOption = Script.lat
         Script for the printed dates. Ignored when `as_json` is True.
         Default is `Script.latin`.
     """
-    ad = _today()
+    now = _now_npt()
+    ad = now.date()
     with _reported_as_exit_code():
         bs = ad_to_bs(ad)
     if as_json:
         typer.echo(
-            json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
+            json.dumps(
+                {
+                    "bs": _format_bs(bs),
+                    "ad": ad.isoformat(),
+                    "time": now.strftime("%H:%M:%S"),
+                    "weekday": weekday_name(ad),
+                }
+            )
         )
         return
     devanagari = script is Script.devanagari
     day = weekday_name(ad, devanagari=devanagari)
     ad_text = to_devanagari_numerals(ad.isoformat()) if devanagari else ad.isoformat()
+    time_text = now.strftime("%H:%M")
+    if devanagari:
+        time_text = to_devanagari_numerals(time_text)
     # Two labelled lines, the same shape `range` prints, so the two commands
-    # that report a position in both calendars read alike. The weekday repeats
-    # on both because they are one day: each line stays complete on its own
-    # rather than sending a reader to the other for half the answer.
-    typer.echo(f"BS {_format_bs(bs, devanagari=devanagari)} {day}")
-    typer.echo(f"AD {ad_text} {day}")
+    # that report a position in both calendars read alike. The time and
+    # weekday repeat on both because they are one moment: each line stays
+    # complete on its own rather than sending a reader to the other for half
+    # the answer. Minutes only, not seconds -- BSDateTime and the underlying
+    # conversion carry full precision, but a "what time is it" banner reading
+    # to the second is more precision than anyone asked for.
+    typer.echo(f"BS {_format_bs(bs, devanagari=devanagari)} {time_text} {day}")
+    typer.echo(f"AD {ad_text} {time_text} {day}")
 
 
 @app.command("range", help="Print the date range nepkit has data for.")
