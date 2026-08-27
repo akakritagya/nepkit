@@ -507,6 +507,15 @@ $ nepkit --version
 nepkit 0.3.0
 ```
 
+`-v` and `-h` work as short forms everywhere `--version` and `--help` do --
+`-h` on every subcommand too, not just here, since it comes from the app's
+own `context_settings` rather than a per-command option:
+
+```console
+$ nepkit -v
+nepkit 0.3.0
+```
+
 ```console
 $ nepkit --help
  Usage: nepkit [OPTIONS] COMMAND [ARGS]...
@@ -514,11 +523,11 @@ $ nepkit --help
  Bikram Sambat (BS) <-> Gregorian (AD) date conversion.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --version                     Show the version and exit.                     │
-│ --install-completion          Install completion for the current shell.      │
-│ --show-completion             Show completion for the current shell, to copy │
-│                               it or customize the installation.              │
-│ --help                        Show this message and exit.                    │
+│ --version             -v        Show the version and exit.                   │
+│ --install-completion            Install completion for the current shell.    │
+│ --show-completion               Show completion for the current shell, to    │
+│                                 copy it or customize the installation.       │
+│ --help                -h        Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ bs2ad  Convert a Bikram Sambat date to Gregorian.                            │
@@ -543,10 +552,10 @@ $ nepkit calbs --help
 │   month      <int>  Month, 1-12. Defaults to the current one.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --json                              Emit machine-readable JSON.              │
-│ --color        <auto|always|never>  When to colourise the grid.              │
-│                                     [default: auto]                          │
-│ --help                              Show this message and exit.              │
+│ --json                                Emit machine-readable JSON.            │
+│ --color          <auto|always|never>  When to colourise the grid.            │
+│                                       [default: auto]                        │
+│ --help   -h                           Show this message and exit.            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

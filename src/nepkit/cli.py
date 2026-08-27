@@ -58,6 +58,9 @@ _DATE_PARTS: Final[int] = 3
 app = typer.Typer(
     name="nepkit",
     help="Bikram Sambat (BS) <-> Gregorian (AD) date conversion.",
+    # Click's own setting, forwarded as-is: -h works everywhere --help does,
+    # on the top-level app and every subcommand alike, not just here.
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 # figlet "standard", composed glyph by glyph so the columns actually line up.
@@ -329,6 +332,7 @@ VersionOption = Annotated[
     bool,
     typer.Option(
         "--version",
+        "-v",
         callback=_version_callback,
         is_eager=True,
         help="Show the version and exit.",
