@@ -10,9 +10,9 @@ every command's current output, captured live.
 
 ## Unreleased
 
-Merged to `main`, but `pyproject.toml` is still `0.3.0` — none of this has
-shipped under a bumped version yet, so `pip install nepkit` will not have it
-until the next release.
+Nothing yet.
+
+## v0.4.0 — 2026-09-08
 
 - **Promoted the CLI's date parsing/formatting into the library**
   ([#39](https://github.com/akakritagya/nepkit/pull/39), 2026-09-08).
