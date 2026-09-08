@@ -189,6 +189,35 @@ Chaitra 18 - Baisakh 17, 2082/2083
     26  27  28  29  30
 ```
 
+### Named month input
+
+The month argument accepts a name too, case-insensitively, alongside the
+numeric `1`-`12` form -- `calbs` matches BS names, `calad` matches English
+names or 3-letter abbreviations. Neither takes `--script`; this is input
+flexibility, not Devnagari support.
+
+```console
+$ nepkit calbs 2081 Shrawan
+        Shrawan 2081
+    16 Jul - 16 Aug 2024
+Sun Mon Tue Wed Thu Fri Sat
+          1   2   3   4   5
+  6   7   8   9  10  11  12
+ 13  14  15  16  17  18  19
+ 20  21  22  23  24  25  26
+ 27  28  29  30  31  32
+
+$ nepkit calad 2024 Jul
+         July 2024
+Ashadh 17 - Shrawan 16, 2081
+Sun Mon Tue Wed Thu Fri Sat
+      1   2   3   4   5   6
+  7   8   9  10  11  12  13
+ 14  15  16  17  18  19  20
+ 21  22  23  24  25  26  27
+ 28  29  30  31
+```
+
 ### Current month
 
 ```bash
