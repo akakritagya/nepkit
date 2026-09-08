@@ -16,7 +16,7 @@ dependencies = [
   "typer>=0.15,<0.28",
   # Already installed transitively through typer, which uses it for its own
   # help rendering. Declared explicitly because render.py now depends on it
-  # directly too, for rich.cells.cell_len -- Devanagari text's terminal width
+  # directly too, for rich.cells.cell_len -- Devnagari text's terminal width
   # doesn't match its code-point count, and cell_len is what rich.Panel itself
   # uses to lay out the coloured calendar grid, so grid padding has to agree
   # with it rather than with plain len().

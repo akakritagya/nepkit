@@ -70,17 +70,28 @@ $ nepkit ad2bs 2024-07-30 --json
 
 ```console
 $ nepkit today
-BS 2083-04-27 14:32 Wed
-AD 2026-08-12 14:32 Wed
+BS २७ साउन २०८३ १४:३२ बुध
+AD 12 Aug 2026 14:32 Wed
+
+$ nepkit today --script latin
+BS 27 Shrawan 2083 14:32 Wed
+AD 12 Aug 2026 14:32 Wed
 
 $ nepkit today --json
-{"bs": "2083-04-27", "ad": "2026-08-12", "time": "14:32:07", "weekday": "Wed"}
+{"bs": "2083-04-27", "bs_text": "27 Shrawan 2083", "ad": "2026-08-12", "ad_text": "12 Aug 2026", "time": "14:32:07", "weekday": "Wed"}
 ```
 
 The time is always Nepal Standard Time (UTC+05:45), regardless of what
 timezone the machine running `nepkit` is actually set to -- both lines show
 the same clock reading because they are one moment, just in two calendars.
 Minutes only in the plain output; `--json`'s `time` field carries seconds.
+The plain-text lines are named dates; `--json` keeps the numeric `bs`/`ad`
+fields for machine consumption and adds `bs_text`/`ad_text` alongside them
+with that same named form. `today` defaults to `--script devnagari` -- pass
+`--script latin` for the romanised form shown above. `--script` only ever
+touches the BS line -- there is no Devnagari table for Gregorian month
+names, so AD (and `ad_text`, and `--json` entirely) stay Latin regardless of
+script.
 
 > Output varies with the date and time.
 
@@ -214,25 +225,38 @@ nothing parsing stdout breaks on the one day a month a marker would appear.
 
 ## Script
 
-`--script devanagari` renders BS dates in Devanagari on `bs2ad`, `ad2bs`,
+`--script devnagari` renders BS dates in Devnagari on `bs2ad`, `ad2bs`,
 `today`, and `range` -- the commands that print a date rather than draw a
-grid:
+grid. `bs2ad`/`ad2bs`/`range` default to `--script latin`; `today` defaults
+to `--script devnagari` instead:
 
 ```console
-$ nepkit bs2ad 2081-04-15 --script devanagari
+$ nepkit bs2ad 2081-04-15 --script devnagari
 २०२४-०७-३० मंगल
 
-$ nepkit range --script devanagari
+$ nepkit range --script devnagari
 BS २०००-०१-०१ .. २०९०-१२-३०  (years २०००-२०९०)
 AD १९४३-०४-१४ .. २०३४-०४-१३
+
+$ nepkit today
+BS १५ साउन २०८१ १४:३२ मंगल
+AD 30 Jul 2024 14:32 Tue
+
+$ nepkit today --script latin
+BS 15 Shrawan 2081 14:32 Tue
+AD 30 Jul 2024 14:32 Tue
 ```
+
+`today`'s AD line is the one exception: it stays fully Latin -- date, time,
+and weekday -- regardless of `--script`, since there is no Devnagari table
+for Gregorian month names. `--script` only ever touches the BS line there.
 
 `--json` always stays canonical (Latin digits) regardless of `--script`, the
 same way `--color` is ignored there: machine-readable output should not shift
 shape based on a human-readability preference.
 
-`calbs`/`calad` don't take `--script` -- the grid renderer's own Devanagari
-support (`nepkit.render.bs_month_grid(..., devanagari=True)` and friends) is
+`calbs`/`calad` don't take `--script` -- the grid renderer's own Devnagari
+support (`nepkit.render.bs_month_grid(..., devnagari=True)` and friends) is
 there for library use, not wired into those two commands. `BS_MONTH_NAMES_NE`
 is exported from the top-level package alongside `BS_MONTH_NAMES` for the
 same reason.
@@ -258,8 +282,8 @@ Today  BS 2083-04-27   AD 2026-08-12 Wed
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
-BS 2083-04-27 Wed
-AD 2026-08-12 Wed
+BS २७ साउन २०८३ बुध
+AD 12 Aug 2026 Wed
 nepkit> bs2ad 2081-04-15
 2024-07-30 Tue
 nepkit> calbs 2081 9
@@ -572,8 +596,8 @@ $ nepkit calbs --help
   silently reinterpreted. Convert to NPT yourself first. There is no
   `--time` flag on `bs2ad`/`ad2bs`; only `today` and the interactive
   session's banner show a time.
-- **Devanagari month names or Nepali numerals in the calendar grid.**
-  `calbs`/`calad` stay Latin -- see [Script](#script) for where Devanagari
+- **Devnagari month names or Nepali numerals in the calendar grid.**
+  `calbs`/`calad` stay Latin -- see [Script](#script) for where Devnagari
   is and isn't wired up.
 
 Correctness rests on the bundled table, and the test suite cannot prove it:

@@ -19,8 +19,13 @@ command-line tool.
 
 > **Status:** published, pre-1.0. The library and CLI both work and are tested,
 > but the API and the CLI's output shapes may still change — 0.2.0 appended the
-> weekday to `bs2ad`, `ad2bs`, and `today`. Pin a version if you script against
-> stdout, or read the first field: the date still starts the line.
+> weekday to `bs2ad`, `ad2bs`, and `today`, and a later release switched
+> `today`'s plain-text dates from numeric (`2083-04-27`) to named
+> (`27 Shrawan 2083`) and made `--script devnagari` its default, so plain
+> `nepkit today` now prints Devnagari on the BS line unless you pass
+> `--script latin`; `today --json`'s numeric `bs`/`ad` fields are unchanged,
+> with named forms added alongside as `bs_text`/`ad_text`. Pin a version if you
+> script against stdout, or use `--json` instead.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
 through every command, option, and failure mode with real captured output.
@@ -152,8 +157,8 @@ $ nepkit ad2bs 2024-07-30
 2081-04-15 Tue
 
 $ nepkit today
-BS 2083-04-27 Wed
-AD 2026-08-12 Wed
+BS २७ साउन २०८३ बुध
+AD 12 Aug 2026 Wed
 
 $ nepkit range
 BS 2000-01-01 .. 2090-12-30  (years 2000-2090)
@@ -163,6 +168,11 @@ AD 1943-04-14 .. 2034-04-13
 Direction is always explicit, and has to be: the BS and AD year numbers overlap
 from 2000 to 2034, so `2024` is a valid year in both calendars and nothing
 could reliably guess which one you meant.
+
+`today` defaults to `--script devnagari`, so its BS line reads Devnagari
+without any flag; pass `--script latin` for the romanised form instead. The
+AD line is always Latin. `bs2ad`/`ad2bs`/`range` default to `latin` and need
+`--script devnagari` explicitly.
 
 ### Interactive
 
@@ -183,8 +193,8 @@ Today  BS 2083-04-27   AD 2026-08-12 Wed
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
-BS 2083-04-27 Wed
-AD 2026-08-12 Wed
+BS २७ साउन २०८३ बुध
+AD 12 Aug 2026 Wed
 
 nepkit> bs2ad 2081-04-15
 2024-07-30 Tue
@@ -322,10 +332,14 @@ from its contract at no cost.
   silently treated as NPT — convert it yourself with `astimezone` first. In
   the CLI, only `today` and the interactive banner show the time; there is
   no `--time` flag on `bs2ad`/`ad2bs`.
-- **Devanagari formatting stops at the calendar grid.** `--script devanagari`
+- **Devnagari formatting stops at the calendar grid.** `--script devnagari`
   covers `bs2ad`/`ad2bs`/`today`/`range` and the library
   (`nepkit.BS_MONTH_NAMES_NE`, `nepkit.render`'s grid functions); `calbs` and
-  `calad` render Latin only. See [DEMO.md](https://github.com/akakritagya/nepkit/blob/main/DEMO.md#script).
+  `calad` render Latin only. `today` defaults to `--script devnagari` (the
+  others default to `latin`), and its AD line is Latin regardless of
+  `--script` -- there is no Devnagari table for Gregorian month names, so the
+  option only ever touches its BS line. See
+  [DEMO.md](https://github.com/akakritagya/nepkit/blob/main/DEMO.md#script).
 - **The range is hard-bounded** at BS 2000–2090 and will not extrapolate.
 - **Correctness rests on the data, and round-trip tests alone cannot prove
   it.** The property suite verifies self-consistency exhaustively — every one

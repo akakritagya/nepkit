@@ -31,23 +31,23 @@ WEEKDAY_ABBREVIATIONS_NE: Final[tuple[str, ...]] = (
 
 _DAYS_PER_WEEK: Final[int] = 7
 _CELL_WIDTH: Final[int] = 3
-# Devanagari vowel signs, virama, and anusvara are extra code points that render
+# Devnagari vowel signs, virama, and anusvara are extra code points that render
 # narrower than 1 terminal column each (some contribute none at all) -- Python's
 # len() cannot see that, so width here is measured with rich's cell_len, the
-# same measurement rich.Panel itself uses, or Devanagari mode's box borders
+# same measurement rich.Panel itself uses, or Devnagari mode's box borders
 # drift from its own content by a column or two. Comes out to 3 either way for
 # the current abbreviations, same as Latin, but stays derived rather than
 # assumed in case the set ever changes.
-_DEVANAGARI_CELL_WIDTH: Final[int] = max(
+_DEVNAGARI_CELL_WIDTH: Final[int] = max(
     _CELL_WIDTH, *(cell_len(name) for name in WEEKDAY_ABBREVIATIONS_NE)
 )
 
-_DEVANAGARI_DIGITS: Final[str] = "०१२३४५६७८९"
-_TO_DEVANAGARI_DIGITS: Final[dict[int, int]] = str.maketrans("0123456789", _DEVANAGARI_DIGITS)
+_DEVNAGARI_DIGITS: Final[str] = "०१२३४५६७८९"
+_TO_DEVNAGARI_DIGITS: Final[dict[int, int]] = str.maketrans("0123456789", _DEVNAGARI_DIGITS)
 
 
-def to_devanagari_numerals(text: str) -> str:
-    """Translate every ASCII digit in `text` to its Devanagari counterpart.
+def to_devnagari_numerals(text: str) -> str:
+    """Translate every ASCII digit in `text` to its Devnagari counterpart.
 
     Parameters
     ----------
@@ -58,19 +58,19 @@ def to_devanagari_numerals(text: str) -> str:
     Returns
     -------
     str
-        `text` with every ASCII digit 0-9 replaced by its Devanagari form.
+        `text` with every ASCII digit 0-9 replaced by its Devnagari form.
     """
-    return text.translate(_TO_DEVANAGARI_DIGITS)
+    return text.translate(_TO_DEVNAGARI_DIGITS)
 
 
-def _bs_month_name(month: int, *, devanagari: bool) -> str:
+def bs_month_name(month: int, *, devnagari: bool) -> str:
     """Look up BS month `month`'s name in the requested script.
 
     Parameters
     ----------
     month : int
         The Bikram Sambat month, 1-12.
-    devanagari : bool
+    devnagari : bool
         Whether to use BS_MONTH_NAMES_NE instead of BS_MONTH_NAMES.
 
     Returns
@@ -78,7 +78,7 @@ def _bs_month_name(month: int, *, devanagari: bool) -> str:
     str
         The month's name.
     """
-    names = BS_MONTH_NAMES_NE if devanagari else BS_MONTH_NAMES
+    names = BS_MONTH_NAMES_NE if devnagari else BS_MONTH_NAMES
     return names[month - 1]
 
 
@@ -86,8 +86,8 @@ def _pad_left(text: str, width: int) -> str:
     """Right-align `text` to `width` terminal columns.
 
     Not Python's `f"{text:>{width}}"`: that pads by code-point count, and
-    Devanagari text's terminal width does not always match its code-point
-    count (see `_DEVANAGARI_CELL_WIDTH`). `width` is assumed to already be at
+    Devnagari text's terminal width does not always match its code-point
+    count (see `_DEVNAGARI_CELL_WIDTH`). `width` is assumed to already be at
     least `cell_len(text)`; a `text` wider than `width` is returned unpadded.
 
     Parameters
@@ -109,7 +109,7 @@ def _center(text: str, width: int) -> str:
     """Centre `text` within `width` terminal columns, trailing padding stripped.
 
     Not `text.center(width).rstrip()`: `str.center` measures by code-point
-    count, which disagrees with terminal-column width for Devanagari text
+    count, which disagrees with terminal-column width for Devnagari text
     (see `_pad_left`). This replicates `str.center`'s own left/right split
     -- `margin // 2`, plus one extra column on the left when both the
     margin and the target width are odd -- rather than a plain `margin //
@@ -155,7 +155,7 @@ def _header_row(abbreviations: tuple[str, ...], *, width: int) -> str:
 
 
 WEEKDAY_HEADER: Final[str] = _header_row(WEEKDAY_ABBREVIATIONS, width=_CELL_WIDTH)
-"""The Latin header, `"Sun Mon Tue Wed Thu Fri Sat"`. Devanagari mode builds its
+"""The Latin header, `"Sun Mon Tue Wed Thu Fri Sat"`. Devnagari mode builds its
 own, wider one at render time -- see `_header_row`."""
 
 ACCENT: Final[str] = "cyan"
@@ -214,7 +214,7 @@ def _sunday_first_index(day: date) -> int:
     return (day.weekday() + 1) % _DAYS_PER_WEEK
 
 
-def weekday_name(day: date, *, devanagari: bool = False) -> str:
+def weekday_name(day: date, *, devnagari: bool = False) -> str:
     """Look up the Sunday-first weekday abbreviation for a Gregorian date.
 
     Deliberately not strftime("%a"), which is locale-dependent: under
@@ -228,7 +228,7 @@ def weekday_name(day: date, *, devanagari: bool = False) -> str:
     ----------
     day : date
         The date to name.
-    devanagari : bool, optional
+    devnagari : bool, optional
         Whether to use WEEKDAY_ABBREVIATIONS_NE instead of
         WEEKDAY_ABBREVIATIONS. Default is False.
 
@@ -237,7 +237,7 @@ def weekday_name(day: date, *, devanagari: bool = False) -> str:
     str
         A weekday abbreviation, e.g. "Wed" or "बुध".
     """
-    names = WEEKDAY_ABBREVIATIONS_NE if devanagari else WEEKDAY_ABBREVIATIONS
+    names = WEEKDAY_ABBREVIATIONS_NE if devnagari else WEEKDAY_ABBREVIATIONS
     return names[_sunday_first_index(day)]
 
 
@@ -266,7 +266,7 @@ def _build_weeks(lead_blanks: int, total_days: int) -> tuple[tuple[int | None, .
 
 
 def bs_month_grid(
-    year: int, month: int, *, today: BSDate | None = None, devanagari: bool = False
+    year: int, month: int, *, today: BSDate | None = None, devnagari: bool = False
 ) -> MonthGrid:
     """Lay out a Bikram Sambat month, cross-referenced to the Gregorian dates it spans.
 
@@ -282,13 +282,13 @@ def bs_month_grid(
     today : BSDate or None, optional
         The current BS date, used to mark today's cell if it falls inside
         this month. Default is None.
-    devanagari : bool, optional
-        Render the title's month name in Devanagari, and every numeral in
-        both the title and subtitle as Devanagari digits -- including the
+    devnagari : bool, optional
+        Render the title's month name in Devnagari, and every numeral in
+        both the title and subtitle as Devnagari digits -- including the
         subtitle's Gregorian day and year, since that is a numeral-system
         choice, not a claim about which calendar the number belongs to. The
         subtitle's Gregorian month abbreviation (e.g. "Jul") is untouched
-        either way: nepkit has no Devanagari names for the Gregorian
+        either way: nepkit has no Devnagari names for the Gregorian
         calendar to substitute. Default is False.
 
     Returns
@@ -308,10 +308,10 @@ def bs_month_grid(
     first_ad = bs_to_ad(first_bs)
     last_ad = first_ad + timedelta(days=total_days - 1)
 
-    title = f"{_bs_month_name(month, devanagari=devanagari)} {year}"
+    title = f"{bs_month_name(month, devnagari=devnagari)} {year}"
     span = f"{first_ad.strftime('%d %b')} - {last_ad.strftime('%d %b %Y')}"
-    if devanagari:
-        title, span = to_devanagari_numerals(title), to_devanagari_numerals(span)
+    if devnagari:
+        title, span = to_devnagari_numerals(title), to_devnagari_numerals(span)
     marked = today.day if today is not None and (today.year, today.month) == (year, month) else None
     return MonthGrid(
         title=title,
@@ -322,7 +322,7 @@ def bs_month_grid(
 
 
 def ad_month_grid(
-    year: int, month: int, *, today: date | None = None, devanagari: bool = False
+    year: int, month: int, *, today: date | None = None, devnagari: bool = False
 ) -> MonthGrid:
     """Lay out a Gregorian month, cross-referenced to the BS months it spans.
 
@@ -338,10 +338,10 @@ def ad_month_grid(
     today : date or None, optional
         The current Gregorian date, used to mark today's cell if it falls
         inside this month. Default is None.
-    devanagari : bool, optional
-        Render the subtitle's BS month names in Devanagari, and every
+    devnagari : bool, optional
+        Render the subtitle's BS month names in Devnagari, and every
         numeral in the title and subtitle -- BS and Gregorian alike -- as
-        Devanagari digits. The title's Gregorian month name (e.g. "July")
+        Devnagari digits. The title's Gregorian month name (e.g. "July")
         is untouched either way, same reasoning as `bs_month_grid`.
         Default is False.
 
@@ -371,15 +371,15 @@ def ad_month_grid(
         )
 
     first_bs, last_bs = ad_to_bs(first_ad), ad_to_bs(last_ad)
-    start = f"{_bs_month_name(first_bs.month, devanagari=devanagari)} {first_bs.day}"
-    end = f"{_bs_month_name(last_bs.month, devanagari=devanagari)} {last_bs.day}"
+    start = f"{bs_month_name(first_bs.month, devnagari=devnagari)} {first_bs.day}"
+    end = f"{bs_month_name(last_bs.month, devnagari=devnagari)} {last_bs.day}"
     years = (
         str(first_bs.year) if first_bs.year == last_bs.year else f"{first_bs.year}/{last_bs.year}"
     )
     title = f"{calendar.month_name[month]} {year}"
     subtitle = f"{start} - {end}, {years}"
-    if devanagari:
-        title, subtitle = to_devanagari_numerals(title), to_devanagari_numerals(subtitle)
+    if devnagari:
+        title, subtitle = to_devnagari_numerals(title), to_devnagari_numerals(subtitle)
     marked = today.day if today is not None and (today.year, today.month) == (year, month) else None
     return MonthGrid(
         title=title,
@@ -389,13 +389,13 @@ def ad_month_grid(
     )
 
 
-def _active_header(*, devanagari: bool) -> tuple[str, int]:
+def _active_header(*, devnagari: bool) -> tuple[str, int]:
     """Pick the weekday header text and column width for the requested script.
 
     Parameters
     ----------
-    devanagari : bool
-        Whether to use WEEKDAY_ABBREVIATIONS_NE at `_DEVANAGARI_CELL_WIDTH`
+    devnagari : bool
+        Whether to use WEEKDAY_ABBREVIATIONS_NE at `_DEVNAGARI_CELL_WIDTH`
         instead of WEEKDAY_ABBREVIATIONS at `_CELL_WIDTH`.
 
     Returns
@@ -404,13 +404,13 @@ def _active_header(*, devanagari: bool) -> tuple[str, int]:
         The header line, and the column width every cell in the body must
         also use to stay aligned under it.
     """
-    if devanagari:
-        header = _header_row(WEEKDAY_ABBREVIATIONS_NE, width=_DEVANAGARI_CELL_WIDTH)
-        return header, _DEVANAGARI_CELL_WIDTH
+    if devnagari:
+        header = _header_row(WEEKDAY_ABBREVIATIONS_NE, width=_DEVNAGARI_CELL_WIDTH)
+        return header, _DEVNAGARI_CELL_WIDTH
     return WEEKDAY_HEADER, _CELL_WIDTH
 
 
-def _cell(day: int | None, *, width: int, devanagari: bool) -> str:
+def _cell(day: int | None, *, width: int, devnagari: bool) -> str:
     """Format one grid cell.
 
     Parameters
@@ -420,8 +420,8 @@ def _cell(day: int | None, *, width: int, devanagari: bool) -> str:
     width : int
         The column width to pad to -- from `_active_header`, so a cell
         always matches the header it renders under.
-    devanagari : bool
-        Whether to render the day number with Devanagari digits.
+    devnagari : bool
+        Whether to render the day number with Devnagari digits.
 
     Returns
     -------
@@ -430,19 +430,19 @@ def _cell(day: int | None, *, width: int, devanagari: bool) -> str:
     """
     if day is None:
         return " " * width
-    text = to_devanagari_numerals(str(day)) if devanagari else str(day)
+    text = to_devnagari_numerals(str(day)) if devnagari else str(day)
     return _pad_left(text, width)
 
 
-def block_width(grid: MonthGrid, *, devanagari: bool = False) -> int:
+def block_width(grid: MonthGrid, *, devnagari: bool = False) -> int:
     """Compute how wide the rendered block is.
 
     Parameters
     ----------
     grid : MonthGrid
         The grid to measure.
-    devanagari : bool, optional
-        Whether the Devanagari weekday header (wider than the Latin one)
+    devnagari : bool, optional
+        Whether the Devnagari weekday header (wider than the Latin one)
         will be rendered alongside this grid. Default is False.
 
     Returns
@@ -450,11 +450,11 @@ def block_width(grid: MonthGrid, *, devanagari: bool = False) -> int:
     int
         The grid's width, unless a heading is wider.
     """
-    header, _ = _active_header(devanagari=devanagari)
+    header, _ = _active_header(devnagari=devnagari)
     return max(cell_len(header), cell_len(grid.title), cell_len(grid.subtitle))
 
 
-def _indent(grid: MonthGrid, *, devanagari: bool = False) -> str:
+def _indent(grid: MonthGrid, *, devnagari: bool = False) -> str:
     """Compute the left pad that centres the week columns under a wider heading.
 
     Applied identically to every row, including the weekday header, so the
@@ -464,20 +464,20 @@ def _indent(grid: MonthGrid, *, devanagari: bool = False) -> str:
     ----------
     grid : MonthGrid
         The grid being rendered.
-    devanagari : bool, optional
-        Whether the Devanagari weekday header is in use. Default is False.
+    devnagari : bool, optional
+        Whether the Devnagari weekday header is in use. Default is False.
 
     Returns
     -------
     str
         The left-padding spaces.
     """
-    header, _ = _active_header(devanagari=devanagari)
-    width = block_width(grid, devanagari=devanagari)
+    header, _ = _active_header(devnagari=devnagari)
+    width = block_width(grid, devnagari=devnagari)
     return " " * (max(0, width - cell_len(header)) // 2)
 
 
-def _rows(grid: MonthGrid, *, mark_today: bool, devanagari: bool = False) -> list[str]:
+def _rows(grid: MonthGrid, *, mark_today: bool, devnagari: bool = False) -> list[str]:
     """Render each week of `grid` as one padded, space-joined line.
 
     Parameters
@@ -486,8 +486,8 @@ def _rows(grid: MonthGrid, *, mark_today: bool, devanagari: bool = False) -> lis
         The grid to render.
     mark_today : bool
         Whether to wrap today's cell in rich markup.
-    devanagari : bool, optional
-        Whether to render day numbers with Devanagari digits. Default is
+    devnagari : bool, optional
+        Whether to render day numbers with Devnagari digits. Default is
         False.
 
     Returns
@@ -495,29 +495,29 @@ def _rows(grid: MonthGrid, *, mark_today: bool, devanagari: bool = False) -> lis
     list of str
         One line per week.
     """
-    _, width = _active_header(devanagari=devanagari)
-    pad = _indent(grid, devanagari=devanagari)
+    _, width = _active_header(devnagari=devnagari)
+    pad = _indent(grid, devnagari=devnagari)
     rows: list[str] = []
     for week in grid.weeks:
         cells = [
-            f"[{TODAY_STYLE}]{_cell(day, width=width, devanagari=devanagari)}[/]"
+            f"[{TODAY_STYLE}]{_cell(day, width=width, devnagari=devnagari)}[/]"
             if mark_today and day is not None and day == grid.today
-            else _cell(day, width=width, devanagari=devanagari)
+            else _cell(day, width=width, devnagari=devnagari)
             for day in week
         ]
         rows.append((pad + " ".join(cells)).rstrip())
     return rows
 
 
-def render_body(grid: MonthGrid, *, devanagari: bool = False) -> str:
+def render_body(grid: MonthGrid, *, devnagari: bool = False) -> str:
     """Render the weekday header and week rows as plain text with no markup at all.
 
     Parameters
     ----------
     grid : MonthGrid
         The grid to render.
-    devanagari : bool, optional
-        Render the weekday header and day numbers in Devanagari. Default is
+    devnagari : bool, optional
+        Render the weekday header and day numbers in Devnagari. Default is
         False.
 
     Returns
@@ -525,12 +525,12 @@ def render_body(grid: MonthGrid, *, devanagari: bool = False) -> str:
     str
         The header and week rows, newline-joined.
     """
-    header, _ = _active_header(devanagari=devanagari)
-    rows = _rows(grid, mark_today=False, devanagari=devanagari)
-    return "\n".join([_indent(grid, devanagari=devanagari) + header, *rows])
+    header, _ = _active_header(devnagari=devnagari)
+    rows = _rows(grid, mark_today=False, devnagari=devnagari)
+    return "\n".join([_indent(grid, devnagari=devnagari) + header, *rows])
 
 
-def render_body_markup(grid: MonthGrid, *, devanagari: bool = False) -> str:
+def render_body_markup(grid: MonthGrid, *, devnagari: bool = False) -> str:
     """Render the same grid as render_body, with today's cell wrapped in rich markup.
 
     Kept separate from render_body so the plain path cannot accidentally grow
@@ -540,8 +540,8 @@ def render_body_markup(grid: MonthGrid, *, devanagari: bool = False) -> str:
     ----------
     grid : MonthGrid
         The grid to render.
-    devanagari : bool, optional
-        Render the weekday header and day numbers in Devanagari. Default is
+    devnagari : bool, optional
+        Render the weekday header and day numbers in Devnagari. Default is
         False.
 
     Returns
@@ -549,20 +549,20 @@ def render_body_markup(grid: MonthGrid, *, devanagari: bool = False) -> str:
     str
         The header and week rows, with today's cell marked up.
     """
-    header, _ = _active_header(devanagari=devanagari)
-    rows = _rows(grid, mark_today=True, devanagari=devanagari)
-    return "\n".join([_indent(grid, devanagari=devanagari) + header, *rows])
+    header, _ = _active_header(devnagari=devnagari)
+    rows = _rows(grid, mark_today=True, devnagari=devnagari)
+    return "\n".join([_indent(grid, devnagari=devnagari) + header, *rows])
 
 
-def render_plain(grid: MonthGrid, *, devanagari: bool = False) -> str:
+def render_plain(grid: MonthGrid, *, devnagari: bool = False) -> str:
     """Render the whole grid as plain text, every part centred on the same block.
 
     Parameters
     ----------
     grid : MonthGrid
         The grid to render.
-    devanagari : bool, optional
-        Render the weekday header and day numbers in Devanagari. The
+    devnagari : bool, optional
+        Render the weekday header and day numbers in Devnagari. The
         title and subtitle are unaffected here -- they are already in
         their final script, decided when the grid was built. Default is
         False.
@@ -572,11 +572,11 @@ def render_plain(grid: MonthGrid, *, devanagari: bool = False) -> str:
     str
         The title, subtitle, and body, newline-joined.
     """
-    width = block_width(grid, devanagari=devanagari)
+    width = block_width(grid, devnagari=devnagari)
     return "\n".join(
         [
             _center(grid.title, width),
             _center(grid.subtitle, width),
-            render_body(grid, devanagari=devanagari),
+            render_body(grid, devnagari=devnagari),
         ]
     )
