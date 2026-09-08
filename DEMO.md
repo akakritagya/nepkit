@@ -24,18 +24,21 @@ Direction is always explicit. It has to be: BS 2000–2090 and AD 1943–2034
 overlap numerically from 2000 to 2034, so `2024` is a valid year in *both*
 calendars and nothing could reliably guess which you meant.
 
+`bs2ad`/`ad2bs` accept the date either as `YYYY-MM-DD` or as `"D Month YYYY"`
+(month matched case-insensitively) — see [Named dates](#named-dates) below.
+
 ### BS → AD
 
 ```console
 $ nepkit bs2ad 2081-04-15
-2024-07-30 Tue
+AD 30 Jul 2024 (2024-07-30) Tue
 ```
 
 ### AD → BS
 
 ```console
 $ nepkit ad2bs 2024-07-30
-2081-04-15 Tue
+BS 15 Shrawan 2081 (2081-04-15) Tue
 ```
 
 ### Historical dates
@@ -45,10 +48,33 @@ see [`src/nepkit/data/DATA.md`](src/nepkit/data/DATA.md).
 
 ```console
 $ nepkit ad2bs 2008-05-28      # Nepal declared a federal republic
-2065-02-15 Wed
+BS 15 Jestha 2065 (2065-02-15) Wed
 
 $ nepkit ad2bs 1951-02-18      # end of Rana rule / Democracy Day
-2007-11-07 Sun
+BS 7 Falgun 2007 (2007-11-07) Sun
+```
+
+### Named dates
+
+The plain-text line always leads with the named date and puts the numeric ISO
+form in parentheses; `--json` is unaffected (see [As JSON](#as-json)). The
+argument itself accepts either form too, so these all convert the same date:
+
+```console
+$ nepkit bs2ad 2081-04-15
+AD 30 Jul 2024 (2024-07-30) Tue
+
+$ nepkit bs2ad "15 Shrawan 2081"
+AD 30 Jul 2024 (2024-07-30) Tue
+
+$ nepkit bs2ad "15 SHRAWAN 2081"
+AD 30 Jul 2024 (2024-07-30) Tue
+
+$ nepkit ad2bs "30 July 2024"
+BS 15 Shrawan 2081 (2081-04-15) Tue
+
+$ nepkit ad2bs "30 Jul 2024"
+BS 15 Shrawan 2081 (2081-04-15) Tue
 ```
 
 ### As JSON
@@ -232,7 +258,7 @@ to `--script devnagari` instead:
 
 ```console
 $ nepkit bs2ad 2081-04-15 --script devnagari
-२०२४-०७-३० मंगल
+AD ३० Jul २०२४ (२०२४-०७-३०) मंगल
 
 $ nepkit range --script devnagari
 BS २०००-०१-०१ .. २०९०-१२-३०  (years २०००-२०९०)
@@ -250,6 +276,10 @@ AD 30 Jul 2024 14:32 Tue
 `today`'s AD line is the one exception: it stays fully Latin -- date, time,
 and weekday -- regardless of `--script`, since there is no Devnagari table
 for Gregorian month names. `--script` only ever touches the BS line there.
+`bs2ad`'s AD output follows the grid's rule instead: digits and the weekday
+translate, but the Gregorian month abbreviation (e.g. "Jul") stays Latin,
+since digits are a numeral-system choice rather than a claim about which
+calendar the number belongs to.
 
 `--json` always stays canonical (Latin digits) regardless of `--script`, the
 same way `--color` is ignored there: machine-readable output should not shift
@@ -285,7 +315,7 @@ nepkit> today
 BS २७ साउन २०८३ बुध
 AD 12 Aug 2026 Wed
 nepkit> bs2ad 2081-04-15
-2024-07-30 Tue
+AD 30 Jul 2024 (2024-07-30) Tue
 nepkit> calbs 2081 9
 ╭──────── Poush 2081 ─────────╮
 │     16 Dec - 13 Jan 2025    │
@@ -438,7 +468,7 @@ done
 ```
 
 ```console
-2081-04-15 -> 2024-07-30 Tue
+2081-04-15 -> AD 30 Jul 2024 (2024-07-30) Tue
 2095-01-01 -> outside nepkit's range (4)
 2081-13-01 -> not a real date (3)
 ```

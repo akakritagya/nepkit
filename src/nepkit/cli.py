@@ -36,7 +36,7 @@ from rich.console import Console
 from rich.panel import Panel
 from typer.main import get_command
 
-from nepkit.calendar_data import MAX_BS_YEAR, MIN_BS_YEAR
+from nepkit.calendar_data import BS_MONTH_NAMES, MAX_BS_YEAR, MIN_BS_YEAR
 from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 from nepkit.render import (
@@ -56,6 +56,15 @@ EXIT_INVALID_DATE: Final[int] = 3
 EXIT_OUT_OF_RANGE: Final[int] = 4
 
 _DATE_PARTS: Final[int] = 3
+
+# Lowercased month name/abbreviation -> 1-12, so `_parse_named_ymd` can match
+# "Baisakh"/"baisakh"/"BAISAKH" alike without special-casing case anywhere else.
+_BS_MONTH_LOOKUP: Final[dict[str, int]] = {
+    name.lower(): number for number, name in enumerate(BS_MONTH_NAMES, start=1)
+}
+_AD_MONTH_LOOKUP: Final[dict[str, int]] = {
+    name.lower(): number for number, name in enumerate(calendar.month_name) if name
+} | {abbr.lower(): number for number, abbr in enumerate(calendar.month_abbr) if abbr}
 
 app = typer.Typer(
     name="nepkit",
@@ -346,9 +355,9 @@ def _ensure_utf8_stdio() -> None:
     """Force stdout/stderr to UTF-8, in place of a Windows console's ANSI codepage.
 
     `today` defaults to `--script devnagari`, and every other command accepts
-    it, so Devanagari output is no longer opt-in. `typer.echo` writes straight
+    it, so Devnagari output is no longer opt-in. `typer.echo` writes straight
     to `sys.stdout`, which on Windows defaults to the console's codepage
-    (commonly cp1252) -- a stream that cannot encode Devanagari at all raises
+    (commonly cp1252) -- a stream that cannot encode Devnagari at all raises
     `UnicodeEncodeError` on the first such character. This has to run before
     anything is printed.
     """
@@ -431,10 +440,79 @@ def _parse_ymd(text: str) -> tuple[int, int, int]:
         If `text` is not in YYYY-MM-DD form.
     """
     parts = text.split("-")
-    if len(parts) != _DATE_PARTS or not all(part.isdigit() for part in parts):
+    # isdecimal(), not isdigit(): isdigit() also accepts characters like "²"
+    # that int() then rejects, which would let a crafted input raise
+    # ValueError here instead of the InvalidDateError this function promises.
+    if len(parts) != _DATE_PARTS or not all(part.isdecimal() for part in parts):
         raise InvalidDateError(f"{text!r} is not a date in YYYY-MM-DD form")
     year, month, day = (int(part) for part in parts)
     return year, month, day
+
+
+def _parse_named_ymd(text: str, month_lookup: dict[str, int]) -> tuple[int, int, int] | None:
+    """Parse "D Month YYYY", the month matched case-insensitively against `month_lookup`.
+
+    Parameters
+    ----------
+    text : str
+        The date string to parse.
+    month_lookup : dict of str to int
+        Lowercased month name/abbreviation mapped to its 1-12 number.
+
+    Returns
+    -------
+    tuple of (int, int, int) or None
+        The `(year, month, day)` parsed from `text`, or None if `text` does
+        not even have the "word word word" shape -- the caller falls back to
+        the numeric form in that case instead of raising.
+
+    Raises
+    ------
+    InvalidDateError
+        If `text` has that shape but its month word is not recognised.
+    """
+    parts = text.split()
+    # isdecimal(), not isdigit(): see the matching note in `_parse_ymd`.
+    if len(parts) != _DATE_PARTS or not parts[0].isdecimal() or not parts[2].isdecimal():
+        return None
+    day_text, month_text, year_text = parts
+    month = month_lookup.get(month_text.lower())
+    if month is None:
+        raise InvalidDateError(f"{month_text!r} is not a recognised month name")
+    return int(year_text), month, int(day_text)
+
+
+def _parse_date_text(text: str, month_lookup: dict[str, int]) -> tuple[int, int, int]:
+    """Parse "YYYY-MM-DD" or "D Month YYYY" without regard to which calendar it belongs to.
+
+    Both directions go through this so that identical garbage produces an
+    identical exit code either way, and so either calendar's command accepts
+    either form.
+
+    Parameters
+    ----------
+    text : str
+        The date string to parse.
+    month_lookup : dict of str to int
+        Lowercased month name/abbreviation mapped to its 1-12 number, used
+        only for the named form.
+
+    Returns
+    -------
+    tuple of (int, int, int)
+        The `(year, month, day)` parsed from `text`.
+
+    Raises
+    ------
+    InvalidDateError
+        If `text` is in neither form.
+    """
+    if "-" in text:
+        return _parse_ymd(text)
+    named = _parse_named_ymd(text, month_lookup)
+    if named is None:
+        raise InvalidDateError(f"{text!r} is not a date in 'YYYY-MM-DD' or 'D Month YYYY' form")
+    return named
 
 
 def _parse_bs(text: str) -> BSDate:
@@ -443,7 +521,8 @@ def _parse_bs(text: str) -> BSDate:
     Parameters
     ----------
     text : str
-        The date string, YYYY-MM-DD.
+        The date, as "YYYY-MM-DD" or "D Month YYYY" (e.g. "1 Baisakh 2083"),
+        the month matched case-insensitively.
 
     Returns
     -------
@@ -457,7 +536,7 @@ def _parse_bs(text: str) -> BSDate:
     DateOutOfRangeError
         If the year is outside the bundled table's range.
     """
-    year, month, day = _parse_ymd(text)
+    year, month, day = _parse_date_text(text, _BS_MONTH_LOOKUP)
     return BSDate(year=year, month=month, day=day)  # validates against the table
 
 
@@ -467,7 +546,9 @@ def _parse_ad(text: str) -> date:
     Parameters
     ----------
     text : str
-        The date string, YYYY-MM-DD.
+        The date, as "YYYY-MM-DD" or "D Month YYYY" (e.g. "1 Jan 2000"), the
+        month matched case-insensitively against either the full English
+        name or its 3-letter abbreviation.
 
     Returns
     -------
@@ -479,7 +560,7 @@ def _parse_ad(text: str) -> date:
     InvalidDateError
         If `text` is not a real Gregorian date.
     """
-    year, month, day = _parse_ymd(text)
+    year, month, day = _parse_date_text(text, _AD_MONTH_LOOKUP)
     try:
         return date(year, month, day)
     except ValueError as exc:
@@ -601,16 +682,26 @@ MonthArg = Annotated[int | None, typer.Argument(help="Month, 1-12. Defaults to t
 
 @app.command("bs2ad", help="Convert a Bikram Sambat date to Gregorian.")
 def bs_to_ad_command(
-    bs_date: Annotated[str, typer.Argument(metavar="BS_DATE", help="Bikram Sambat YYYY-MM-DD.")],
+    bs_date: Annotated[
+        str,
+        typer.Argument(
+            metavar="BS_DATE",
+            help="Bikram Sambat date, as YYYY-MM-DD or 'D Month YYYY' (e.g. '1 Baisakh 2083').",
+        ),
+    ],
     as_json: JsonOption = False,
     script: ScriptOption = Script.latin,
 ) -> None:
     """Convert a Bikram Sambat date to Gregorian.
 
+    The plain-text line reads "AD 1 Jan 2000 (2000-01-01) Weekday" -- the
+    named date first, the numeric ISO form in parentheses, then the weekday.
+
     Parameters
     ----------
     bs_date : str
-        The Bikram Sambat date, YYYY-MM-DD.
+        The Bikram Sambat date, as "YYYY-MM-DD" or "D Month YYYY" (e.g.
+        "1 Baisakh 2083"), the month matched case-insensitively.
     as_json : bool, optional
         Emit machine-readable JSON instead of plain text. Default is False.
     script : Script, optional
@@ -626,22 +717,37 @@ def bs_to_ad_command(
         )
         return
     devnagari = script is Script.devnagari
-    ad_text = to_devnagari_numerals(ad.isoformat()) if devnagari else ad.isoformat()
-    typer.echo(f"{ad_text} {weekday_name(ad, devnagari=devnagari)}")
+    ad_named, ad_iso = _format_ad_named(ad), ad.isoformat()
+    if devnagari:
+        # Digits translate; "Jul" has no Devnagari table and stays Latin, the
+        # same rule the grid titles already follow.
+        ad_named, ad_iso = to_devnagari_numerals(ad_named), to_devnagari_numerals(ad_iso)
+    typer.echo(f"AD {ad_named} ({ad_iso}) {weekday_name(ad, devnagari=devnagari)}")
 
 
 @app.command("ad2bs", help="Convert a Gregorian date to Bikram Sambat.")
 def ad_to_bs_command(
-    ad_date: Annotated[str, typer.Argument(metavar="AD_DATE", help="Gregorian YYYY-MM-DD.")],
+    ad_date: Annotated[
+        str,
+        typer.Argument(
+            metavar="AD_DATE",
+            help="Gregorian date, as YYYY-MM-DD or 'D Month YYYY' (e.g. '1 Jan 2000').",
+        ),
+    ],
     as_json: JsonOption = False,
     script: ScriptOption = Script.latin,
 ) -> None:
     """Convert a Gregorian date to Bikram Sambat.
 
+    The plain-text line reads "BS 1 Baisakh 2083 (2083-01-01) Weekday" -- the
+    named date first, the numeric ISO form in parentheses, then the weekday.
+
     Parameters
     ----------
     ad_date : str
-        The Gregorian date, YYYY-MM-DD.
+        The Gregorian date, as "YYYY-MM-DD" or "D Month YYYY" (e.g.
+        "1 Jan 2000"), the month matched case-insensitively against either
+        its full English name or 3-letter abbreviation.
     as_json : bool, optional
         Emit machine-readable JSON instead of plain text. Default is False.
     script : Script, optional
@@ -657,7 +763,9 @@ def ad_to_bs_command(
         )
         return
     devnagari = script is Script.devnagari
-    typer.echo(f"{_format_bs(bs, devnagari=devnagari)} {weekday_name(ad, devnagari=devnagari)}")
+    bs_named = _format_bs_named(bs, devnagari=devnagari)
+    bs_iso = _format_bs(bs, devnagari=devnagari)
+    typer.echo(f"BS {bs_named} ({bs_iso}) {weekday_name(ad, devnagari=devnagari)}")
 
 
 @app.command("today", help="Print today's date in both calendars.")

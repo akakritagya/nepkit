@@ -25,7 +25,13 @@ command-line tool.
 > `nepkit today` now prints Devnagari on the BS line unless you pass
 > `--script latin`; `today --json`'s numeric `bs`/`ad` fields are unchanged,
 > with named forms added alongside as `bs_text`/`ad_text`. The interactive
-> banner's date line switched the same way, from numeric to named. Pin a
+> banner's date line switched the same way, from numeric to named. A further
+> release changed `bs2ad`/`ad2bs`: the `BS_DATE`/`AD_DATE` argument now also
+> accepts `"D Month YYYY"` (e.g. `"1 Baisakh 2083"`, `"1 Jan 2000"`), the
+> month matched case-insensitively, alongside the original `YYYY-MM-DD`; and
+> their plain-text line changed from `2024-07-30 Tue` to
+> `AD 30 Jul 2024 (2024-07-30) Tue` (named date, ISO form in parentheses,
+> weekday) — `--json`'s `bs`/`ad`/`weekday` fields are unchanged. Pin a
 > version if you script against stdout, or use `--json` instead.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
@@ -152,10 +158,10 @@ $ nepkit --version
 nepkit 0.3.0
 
 $ nepkit bs2ad 2081-04-15
-2024-07-30 Tue
+AD 30 Jul 2024 (2024-07-30) Tue
 
-$ nepkit ad2bs 2024-07-30
-2081-04-15 Tue
+$ nepkit ad2bs "30 July 2024"
+BS 15 Shrawan 2081 (2081-04-15) Tue
 
 $ nepkit today
 BS २७ साउन २०८३ बुध
@@ -169,6 +175,11 @@ AD 1943-04-14 .. 2034-04-13
 Direction is always explicit, and has to be: the BS and AD year numbers overlap
 from 2000 to 2034, so `2024` is a valid year in both calendars and nothing
 could reliably guess which one you meant.
+
+`bs2ad`/`ad2bs` accept the date either as `YYYY-MM-DD` or as `"D Month YYYY"`
+(e.g. `"1 Baisakh 2083"`, `"1 Jan 2000"` or `"1 January 2000"`) — the month
+name matched case-insensitively either way, so `Shrawan`, `shrawan`, and
+`SHRAWAN` all work.
 
 `today` defaults to `--script devnagari`, so its BS line reads Devnagari
 without any flag; pass `--script latin` for the romanised form instead. The
@@ -198,7 +209,7 @@ BS २७ साउन २०८३ बुध
 AD 12 Aug 2026 Wed
 
 nepkit> bs2ad 2081-04-15
-2024-07-30 Tue
+AD 30 Jul 2024 (2024-07-30) Tue
 
 nepkit> quit
 ```

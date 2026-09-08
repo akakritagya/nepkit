@@ -25,19 +25,19 @@ from nepkit import cli
 runner = CliRunner()
 
 
-def test_bs2ad_prints_the_converted_date_then_its_weekday() -> None:
-    # The date still starts the line, so anything already cutting the first
-    # field keeps working; the weekday is appended, never prepended.
+def test_bs2ad_prints_the_named_date_then_its_iso_form_and_weekday() -> None:
+    # The named date leads, the numeric ISO form follows in parentheses, and
+    # the weekday is appended last.
     result = runner.invoke(cli.app, ["bs2ad", "2081-04-15"])
     assert result.exit_code == 0
-    assert result.stdout == "2024-07-30 Tue\n"
+    assert result.stdout == "AD 30 Jul 2024 (2024-07-30) Tue\n"
     assert result.stderr == ""
 
 
-def test_ad2bs_prints_the_converted_date_then_its_weekday() -> None:
+def test_ad2bs_prints_the_named_date_then_its_iso_form_and_weekday() -> None:
     result = runner.invoke(cli.app, ["ad2bs", "2024-07-30"])
     assert result.exit_code == 0
-    assert result.stdout == "2081-04-15 Tue\n"
+    assert result.stdout == "BS 15 Shrawan 2081 (2081-04-15) Tue\n"
     assert result.stderr == ""
 
 
@@ -45,7 +45,7 @@ def test_ad2bs_agrees_with_a_tier_three_oracle_pair() -> None:
     # Nepal declared a federal republic on 28 May 2008 = BS 2065-02-15, a
     # Wednesday -- the weekday is an independent check on the same record.
     result = runner.invoke(cli.app, ["ad2bs", "2008-05-28"])
-    assert result.stdout == "2065-02-15 Wed\n"
+    assert result.stdout == "BS 15 Jestha 2065 (2065-02-15) Wed\n"
 
 
 @pytest.mark.parametrize(
@@ -83,6 +83,64 @@ def test_malformed_input_exits_the_same_way_in_both_directions() -> None:
     assert bs.exit_code == ad.exit_code == 3
 
 
+# --- named "D Month YYYY" input ----------------------------------------------
+
+
+def test_bs2ad_accepts_a_named_bs_date() -> None:
+    result = runner.invoke(cli.app, ["bs2ad", "15 Shrawan 2081"])
+    assert result.exit_code == 0
+    assert result.stdout == "AD 30 Jul 2024 (2024-07-30) Tue\n"
+
+
+def test_bs2ad_named_month_is_matched_case_insensitively() -> None:
+    result = runner.invoke(cli.app, ["bs2ad", "15 SHRAWAN 2081"])
+    assert result.exit_code == 0
+    assert result.stdout == "AD 30 Jul 2024 (2024-07-30) Tue\n"
+
+
+def test_ad2bs_accepts_a_named_ad_date_with_the_full_month_name() -> None:
+    result = runner.invoke(cli.app, ["ad2bs", "30 July 2024"])
+    assert result.exit_code == 0
+    assert result.stdout == "BS 15 Shrawan 2081 (2081-04-15) Tue\n"
+
+
+def test_ad2bs_accepts_a_named_ad_date_with_an_abbreviated_month_name() -> None:
+    result = runner.invoke(cli.app, ["ad2bs", "30 jul 2024"])
+    assert result.exit_code == 0
+    assert result.stdout == "BS 15 Shrawan 2081 (2081-04-15) Tue\n"
+
+
+def test_an_unrecognised_month_word_exits_3_and_says_so_on_stderr() -> None:
+    result = runner.invoke(cli.app, ["ad2bs", "30 Notamonth 2024"])
+    assert result.exit_code == 3
+    assert result.stdout == ""
+    assert result.stderr.strip()
+
+
+def test_input_matching_neither_form_exits_3_and_says_so_on_stderr() -> None:
+    # No dash, and not the "word word word" shape either -- neither parser
+    # even attempts this, so it must still fail as an invalid date, not crash.
+    result = runner.invoke(cli.app, ["ad2bs", "bogus"])
+    assert result.exit_code == 3
+    assert result.stdout == ""
+    assert result.stderr.strip()
+
+
+@pytest.mark.parametrize(
+    ("command", "argument"),
+    [("bs2ad", "²081-04-15"), ("ad2bs", "3² Jul 2024")],
+    ids=["ymd_form", "named_form"],
+)
+def test_digit_look_alikes_exit_3_instead_of_crashing(command: str, argument: str) -> None:
+    # "²".isdigit() is True but int("²") raises ValueError -- isdigit() alone
+    # would let this reach int() unguarded and crash with an unhandled
+    # traceback instead of the InvalidDateError this is supposed to become.
+    result = runner.invoke(cli.app, [command, argument])
+    assert result.exit_code == 3
+    assert result.stdout == ""
+    assert result.stderr.strip()
+
+
 def test_version_flag_prints_the_version_and_exits_0() -> None:
     result = runner.invoke(cli.app, ["--version"])
     assert result.exit_code == 0
@@ -94,7 +152,7 @@ def test_short_version_flag_matches_the_long_one() -> None:
 
 
 def test_ensure_utf8_stdio_reconfigures_stdout_and_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`today` defaults to Devanagari, so stdout must not stay on a Windows
+    """`today` defaults to Devnagari, so stdout must not stay on a Windows
     console's ANSI codepage, which cannot encode it and raises
     UnicodeEncodeError on the first such character."""
     encodings: list[str] = []
@@ -441,16 +499,16 @@ def test_cal_defaults_to_the_current_month(monkeypatch: pytest.MonkeyPatch) -> N
 # --- --script devnagari ------------------------------------------------------
 
 
-def test_bs2ad_devnagari_prints_devnagari_digits_and_weekday() -> None:
+def test_bs2ad_devnagari_translates_digits_but_leaves_the_ad_month_name_latin() -> None:
     result = runner.invoke(cli.app, ["bs2ad", "2081-04-15", "--script", "devnagari"])
     assert result.exit_code == 0
-    assert result.stdout == "२०२४-०७-३० मंगल\n"
+    assert result.stdout == "AD ३० Jul २०२४ (२०२४-०७-३०) मंगल\n"
 
 
-def test_ad2bs_devnagari_prints_devnagari_digits_and_weekday() -> None:
+def test_ad2bs_devnagari_prints_devnagari_month_name_digits_and_weekday() -> None:
     result = runner.invoke(cli.app, ["ad2bs", "2024-07-30", "--script", "devnagari"])
     assert result.exit_code == 0
-    assert result.stdout == "२०८१-०४-१५ मंगल\n"
+    assert result.stdout == "BS १५ साउन २०८१ (२०८१-०४-१५) मंगल\n"
 
 
 @pytest.mark.parametrize(
