@@ -515,6 +515,39 @@ def _parse_date_text(text: str, month_lookup: dict[str, int]) -> tuple[int, int,
     return named
 
 
+def _parse_month(month_text: str, month_lookup: dict[str, int]) -> int:
+    """Parse a month argument as a number 1-12 or a name matched case-insensitively.
+
+    Range (1-12) is not checked here -- `bs_month_grid`/`ad_month_grid`
+    already validate that, and duplicating it here would just be two places
+    that could disagree.
+
+    Parameters
+    ----------
+    month_text : str
+        The raw command-line argument.
+    month_lookup : dict of str to int
+        Lowercased month name/abbreviation mapped to its 1-12 number.
+
+    Returns
+    -------
+    int
+        The parsed month number.
+
+    Raises
+    ------
+    InvalidDateError
+        If `month_text` is neither a plain number nor a recognised month
+        name.
+    """
+    if month_text.isdecimal():
+        return int(month_text)
+    month = month_lookup.get(month_text.lower())
+    if month is None:
+        raise InvalidDateError(f"{month_text!r} is not a recognised month name")
+    return month
+
+
 def _parse_bs(text: str) -> BSDate:
     """Parse a Bikram Sambat date string.
 
@@ -677,7 +710,20 @@ ScriptOption = Annotated[
     typer.Option("--script", help="Script for human-readable dates. Ignored with --json."),
 ]
 YearArg = Annotated[int | None, typer.Argument(help="Year. Defaults to the current one.")]
-MonthArg = Annotated[int | None, typer.Argument(help="Month, 1-12. Defaults to the current one.")]
+BsMonthArg = Annotated[
+    str | None,
+    typer.Argument(
+        help="Month: 1-12 or its BS name (e.g. 'Shrawan'), case-insensitive. "
+        "Defaults to the current one.",
+    ),
+]
+AdMonthArg = Annotated[
+    str | None,
+    typer.Argument(
+        help="Month: 1-12 or its name/abbreviation (e.g. 'July'/'Jul'), "
+        "case-insensitive. Defaults to the current one.",
+    ),
+]
 
 
 @app.command("bs2ad", help="Convert a Bikram Sambat date to Gregorian.")
@@ -858,7 +904,7 @@ def range_command(as_json: JsonOption = False, script: ScriptOption = Script.lat
 @app.command("calbs", help="Display a Bikram Sambat month.")
 def calbs_command(
     year: YearArg = None,
-    month: MonthArg = None,
+    month: BsMonthArg = None,
     as_json: JsonOption = False,
     color: ColorOption = ColorMode.auto,
 ) -> None:
@@ -868,8 +914,9 @@ def calbs_command(
     ----------
     year : int or None, optional
         The BS year. Defaults to the current one.
-    month : int or None, optional
-        The BS month, 1-12. Defaults to the current one.
+    month : str or None, optional
+        The BS month, as a number 1-12 or its name (e.g. "Shrawan"), matched
+        case-insensitively. Defaults to the current one.
     as_json : bool, optional
         Emit machine-readable JSON instead of a rendered grid. Default is
         False.
@@ -877,22 +924,23 @@ def calbs_command(
         When to colourise the grid. Default is `ColorMode.auto`.
     """
     with _reported_as_exit_code():
+        month_number = _parse_month(month, _BS_MONTH_LOOKUP) if month is not None else None
         current = ad_to_bs(_today()) if MIN_AD_DATE <= _today() <= MAX_AD_DATE else None
-        if year is None or month is None:
+        if year is None or month_number is None:
             if current is None:
                 raise DateOutOfRangeError(
                     f"today ({_today().isoformat()}) is outside the convertible window, "
                     "so there is no current BS month to default to"
                 )
-            year, month = year or current.year, month or current.month
-        grid = bs_month_grid(year, month, today=current)
+            year, month_number = year or current.year, month_number or current.month
+        grid = bs_month_grid(year, month_number, today=current)
     _emit_grid(grid, "bs", as_json=as_json, color=color)
 
 
 @app.command("calad", help="Display a Gregorian month.")
 def calad_command(
     year: YearArg = None,
-    month: MonthArg = None,
+    month: AdMonthArg = None,
     as_json: JsonOption = False,
     color: ColorOption = ColorMode.auto,
 ) -> None:
@@ -902,8 +950,10 @@ def calad_command(
     ----------
     year : int or None, optional
         The Gregorian year. Defaults to the current one.
-    month : int or None, optional
-        The Gregorian month, 1-12. Defaults to the current one.
+    month : str or None, optional
+        The Gregorian month, as a number 1-12 or its name/abbreviation (e.g.
+        "July"/"Jul"), matched case-insensitively. Defaults to the current
+        one.
     as_json : bool, optional
         Emit machine-readable JSON instead of a rendered grid. Default is
         False.
@@ -911,6 +961,7 @@ def calad_command(
         When to colourise the grid. Default is `ColorMode.auto`.
     """
     with _reported_as_exit_code():
+        month_number = _parse_month(month, _AD_MONTH_LOOKUP) if month is not None else None
         today = _today()
-        grid = ad_month_grid(year or today.year, month or today.month, today=today)
+        grid = ad_month_grid(year or today.year, month_number or today.month, today=today)
     _emit_grid(grid, "ad", as_json=as_json, color=color)

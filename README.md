@@ -31,8 +31,11 @@ command-line tool.
 > month matched case-insensitively, alongside the original `YYYY-MM-DD`; and
 > their plain-text line changed from `2024-07-30 Tue` to
 > `AD 30 Jul 2024 (2024-07-30) Tue` (named date, ISO form in parentheses,
-> weekday) — `--json`'s `bs`/`ad`/`weekday` fields are unchanged. Pin a
-> version if you script against stdout, or use `--json` instead.
+> weekday) — `--json`'s `bs`/`ad`/`weekday` fields are unchanged. `calbs`'s
+> and `calad`'s month argument gained the same case-insensitive name matching
+> (`Shrawan`/`July`/`Jul`) alongside `1`-`12`; their output and `--script`
+> support (none) are unchanged. Pin a version if you script against stdout,
+> or use `--json` instead.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
 through every command, option, and failure mode with real captured output.
@@ -261,6 +264,17 @@ Sun Mon Tue Wed Thu Fri Sat
 Both default to the current month. A Gregorian month never lines up with a BS
 month, so the subtitle names both ends of the span rather than pretending a
 single corresponding month exists.
+
+The month argument accepts a name too, case-insensitively — `calbs` matches
+BS names (`Shrawan`/`shrawan`), `calad` matches English names or 3-letter
+abbreviations (`July`/`Jul`/`jul`) — alongside the numeric `1`-`12` form:
+
+```console
+$ nepkit calbs 2081 Shrawan
+$ nepkit calad 2024 Jul
+```
+
+Neither command takes `--script` — see [Limitations](#limitations) below.
 
 Grids are boxed and coloured on a terminal and plain when redirected, following
 the same convention as `ls` and `git`. Force it either way with

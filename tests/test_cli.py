@@ -496,6 +496,48 @@ def test_cal_defaults_to_the_current_month(monkeypatch: pytest.MonkeyPatch) -> N
     assert runner.invoke(cli.app, ["calad"]).stdout.splitlines()[0].strip() == "July 2024"
 
 
+# --- named month input for calbs/calad ---------------------------------------
+
+
+def test_calbs_accepts_a_bs_month_name() -> None:
+    result = runner.invoke(cli.app, ["calbs", "2081", "Shrawan"])
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[0].strip() == "Shrawan 2081"
+
+
+def test_calbs_bs_month_name_is_matched_case_insensitively() -> None:
+    result = runner.invoke(cli.app, ["calbs", "2081", "SHRAWAN"])
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[0].strip() == "Shrawan 2081"
+
+
+def test_calad_accepts_the_full_ad_month_name() -> None:
+    result = runner.invoke(cli.app, ["calad", "2024", "July"])
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[0].strip() == "July 2024"
+
+
+def test_calad_accepts_an_abbreviated_ad_month_name() -> None:
+    result = runner.invoke(cli.app, ["calad", "2024", "jul"])
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[0].strip() == "July 2024"
+
+
+@pytest.mark.parametrize("command", ["calbs", "calad"])
+def test_cal_commands_reject_an_unrecognised_month_name(command: str) -> None:
+    result = runner.invoke(cli.app, [command, "2081", "Notamonth"])
+    assert result.exit_code == 3
+    assert result.stdout == ""
+    assert result.stderr.strip()
+
+
+@pytest.mark.parametrize("command", ["calbs", "calad"])
+def test_calendar_grid_commands_still_have_no_script_option(command: str) -> None:
+    """Deliberately scoped out: named-month input is not Devnagari support."""
+    result = runner.invoke(cli.app, [command, "2081", "Shrawan", "--script", "devnagari"])
+    assert result.exit_code == 2
+
+
 # --- --script devnagari ------------------------------------------------------
 
 
