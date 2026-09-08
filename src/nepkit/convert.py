@@ -23,6 +23,40 @@ from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 MIN_AD_DATE: Final[date] = ANCHOR.ad_date
 MAX_AD_DATE: Final[date] = ANCHOR.ad_date + timedelta(days=TOTAL_DAYS - 1)
 
+_DATE_PARTS: Final[int] = 3
+
+
+def _parse_ymd(text: str) -> tuple[int, int, int]:
+    """Parse strict "YYYY-MM-DD" without regard to which calendar it belongs to.
+
+    Shared by `BSDate.fromisoformat` and `nepkit.text.parse_ad_date`, so
+    identical garbage produces an identical error either side of the
+    calendar boundary.
+
+    Parameters
+    ----------
+    text : str
+        The date string to parse.
+
+    Returns
+    -------
+    tuple of (int, int, int)
+        The `(year, month, day)` parsed from `text`.
+
+    Raises
+    ------
+    InvalidDateError
+        If `text` is not in "YYYY-MM-DD" form.
+    """
+    parts = text.split("-")
+    # isdecimal(), not isdigit(): isdigit() also accepts characters like "²"
+    # that int() then rejects, which would raise ValueError here instead of
+    # the InvalidDateError this function promises.
+    if len(parts) != _DATE_PARTS or not all(part.isdecimal() for part in parts):
+        raise InvalidDateError(f"{text!r} is not a date in YYYY-MM-DD form")
+    year, month, day = (int(part) for part in parts)
+    return year, month, day
+
 
 @dataclass(frozen=True, slots=True)
 class BSDate:
@@ -52,6 +86,49 @@ class BSDate:
     def __post_init__(self) -> None:
         """Validate the date against the bundled table."""
         check_bs_date(self.year, self.month, self.day)
+
+    def isoformat(self) -> str:
+        """Format as zero-padded "YYYY-MM-DD" -- the ISO 8601 *layout*, applied to a BS date.
+
+        This is not an ISO 8601 date: `datetime.date.fromisoformat` will
+        happily accept the result and return a different, wrong Gregorian
+        day, with no error to signal the mistake. The string is only ever
+        meaningful alongside something that says it is Bikram Sambat.
+
+        Returns
+        -------
+        str
+            The formatted date.
+        """
+        return f"{self.year:04d}-{self.month:02d}-{self.day:02d}"
+
+    def __str__(self) -> str:
+        """Alias for `isoformat`, the same relationship `date.__str__` has to it."""
+        return self.isoformat()
+
+    @classmethod
+    def fromisoformat(cls, text: str) -> "BSDate":
+        """Parse "YYYY-MM-DD" into a `BSDate`.
+
+        Parameters
+        ----------
+        text : str
+            The date string to parse.
+
+        Returns
+        -------
+        BSDate
+            The parsed and validated date.
+
+        Raises
+        ------
+        InvalidDateError
+            If `text` is not in "YYYY-MM-DD" form, or is not a real BS date.
+        DateOutOfRangeError
+            If the year is outside the bundled table's range.
+        """
+        year, month, day = _parse_ymd(text)
+        return cls(year=year, month=month, day=day)
 
 
 def bs_to_ad(bs: BSDate) -> date:
@@ -119,6 +196,67 @@ class BSDateTime:
 
     date: BSDate
     time: time = time()
+
+    def isoformat(self, *, sep: str = "T") -> str:
+        """Format as "YYYY-MM-DD[T ]HH:MM:SS[.ffffff]", the same shape `datetime.isoformat` uses.
+
+        Parameters
+        ----------
+        sep : str, optional
+            The character separating the date and time halves. Default is "T".
+
+        Returns
+        -------
+        str
+            The formatted date and time.
+        """
+        return f"{self.date.isoformat()}{sep}{self.time.isoformat()}"
+
+    def __str__(self) -> str:
+        """Alias for `isoformat`, the same relationship `datetime.__str__` has to it."""
+        return self.isoformat(sep=" ")
+
+    @classmethod
+    def fromisoformat(cls, text: str) -> "BSDateTime":
+        """Parse "YYYY-MM-DD[T ]HH:MM:SS[.ffffff]" into a `BSDateTime`.
+
+        Parameters
+        ----------
+        text : str
+            The date-time string to parse.
+
+        Returns
+        -------
+        BSDateTime
+            The parsed and validated date and time, in Nepal Standard Time.
+
+        Raises
+        ------
+        InvalidDateError
+            If `text` is not in the expected form, its time half carries
+            tzinfo, or its date half is not a real BS date.
+        DateOutOfRangeError
+            If the year is outside the bundled table's range.
+        """
+        date_text, sep, time_text = text.partition("T")
+        if not sep:
+            date_text, sep, time_text = text.partition(" ")
+        if not sep:
+            raise InvalidDateError(f"{text!r} has no date/time separator ('T' or ' ')")
+        try:
+            clock = time.fromisoformat(time_text)
+        except ValueError as exc:
+            raise InvalidDateError(f"{time_text!r} is not a valid time of day") from exc
+        # time.fromisoformat accepts a trailing offset ("14:32:07+05:45", "...Z")
+        # and returns a tz-aware time -- silently keeping it would produce a
+        # BSDateTime whose clock is not NPT, the same mistake
+        # ad_datetime_to_bs_datetime already refuses for a tz-aware datetime.
+        if clock.tzinfo is not None:
+            raise InvalidDateError(
+                f"{time_text!r} carries a UTC offset -- nepkit works only in Nepal "
+                "Standard Time; pass a naive time"
+            )
+        return cls(date=BSDate.fromisoformat(date_text), time=clock)
 
 
 def bs_datetime_to_ad_datetime(bdt: BSDateTime) -> datetime:

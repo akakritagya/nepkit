@@ -34,6 +34,38 @@ def test_bsdate_rejects_a_year_the_table_does_not_cover() -> None:
         BSDate(year=MAX_BS_YEAR + 1, month=1, day=1)
 
 
+def test_bsdate_isoformat_is_zero_padded() -> None:
+    assert BSDate(year=2081, month=4, day=15).isoformat() == "2081-04-15"
+
+
+def test_bsdate_str_is_an_alias_for_isoformat() -> None:
+    bs = BSDate(year=2081, month=4, day=15)
+    assert str(bs) == bs.isoformat()
+
+
+def test_bsdate_fromisoformat_round_trips_with_isoformat() -> None:
+    bs = BSDate(year=2081, month=4, day=15)
+    assert BSDate.fromisoformat(bs.isoformat()) == bs
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["2081-04", "2081/04/15", "not-a-date-at-all", "²081-04-15"],
+    ids=["too_few_parts", "wrong_separator", "not_numeric", "digit_look_alike"],
+)
+def test_bsdate_fromisoformat_rejects_malformed_text(text: str) -> None:
+    # isdecimal(), not isdigit(): a character like "²" passes isdigit() but
+    # crashes int() with ValueError instead of the InvalidDateError promised
+    # here -- see the matching note in fromisoformat itself.
+    with pytest.raises(InvalidDateError, match="is not a date in YYYY-MM-DD form"):
+        BSDate.fromisoformat(text)
+
+
+def test_bsdate_fromisoformat_still_validates_against_the_table() -> None:
+    with pytest.raises(InvalidDateError, match=r"outside \[1, 30\]"):
+        BSDate.fromisoformat("2000-01-31")
+
+
 def test_bs_to_ad_returns_the_anchor_ad_date_at_the_anchor() -> None:
     anchor = BSDate(year=ANCHOR.bs_year, month=ANCHOR.bs_month, day=ANCHOR.bs_day)
     assert bs_to_ad(anchor) == ANCHOR.ad_date
@@ -131,3 +163,54 @@ def test_ad_datetime_to_bs_datetime_rejects_a_tz_aware_value() -> None:
 def test_ad_datetime_to_bs_datetime_still_rejects_a_date_outside_the_window() -> None:
     with pytest.raises(DateOutOfRangeError, match="1943-04-14 through 2034-04-13"):
         ad_datetime_to_bs_datetime(datetime(2040, 1, 1, 9, 0))
+
+
+def test_bsdatetime_isoformat_joins_date_and_time_with_a_t_by_default() -> None:
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+    assert bdt.isoformat() == "2081-04-15T14:32:07"
+
+
+def test_bsdatetime_isoformat_accepts_a_custom_separator() -> None:
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+    assert bdt.isoformat(sep=" ") == "2081-04-15 14:32:07"
+
+
+def test_bsdatetime_str_uses_a_space_separator() -> None:
+    # Mirrors datetime.__str__'s relationship to datetime.isoformat().
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+    assert str(bdt) == "2081-04-15 14:32:07"
+
+
+@pytest.mark.parametrize("sep", ["T", " "], ids=["t_separator", "space_separator"])
+def test_bsdatetime_fromisoformat_round_trips_with_isoformat(sep: str) -> None:
+    bdt = BSDateTime(date=BSDate(year=2081, month=4, day=15), time=time(14, 32, 7))
+    assert BSDateTime.fromisoformat(bdt.isoformat(sep=sep)) == bdt
+
+
+def test_bsdatetime_fromisoformat_rejects_text_with_no_separator() -> None:
+    with pytest.raises(InvalidDateError, match="no date/time separator"):
+        BSDateTime.fromisoformat("2081-04-15")
+
+
+def test_bsdatetime_fromisoformat_rejects_an_unparsable_time_half() -> None:
+    with pytest.raises(InvalidDateError, match="not a valid time of day"):
+        BSDateTime.fromisoformat("2081-04-15Tnonsense")
+
+
+def test_bsdatetime_fromisoformat_still_validates_the_date_half() -> None:
+    with pytest.raises(InvalidDateError, match=r"outside \[1, 30\]"):
+        BSDateTime.fromisoformat("2000-01-31T00:00:00")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["2081-04-15T14:32:07Z", "2081-04-15T14:32:07+05:45", "2081-04-15T14:32:07-00:00"],
+    ids=["zulu", "positive_offset", "zero_offset"],
+)
+def test_bsdatetime_fromisoformat_rejects_a_tz_aware_time_half(text: str) -> None:
+    # time.fromisoformat happily parses a trailing UTC offset and returns a
+    # tz-aware time; silently keeping it would produce a BSDateTime whose
+    # clock is not NPT, the same mistake ad_datetime_to_bs_datetime already
+    # refuses for a tz-aware datetime.
+    with pytest.raises(InvalidDateError, match="carries a UTC offset"):
+        BSDateTime.fromisoformat(text)

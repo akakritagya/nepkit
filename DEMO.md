@@ -77,6 +77,18 @@ $ nepkit ad2bs "30 Jul 2024"
 BS 15 Shrawan 2081 (2081-04-15) Tue
 ```
 
+The month word doesn't have to be the one spelling `nepkit calbs`/`calad`
+print — a common romanisation variant, or a Devnagari name, both resolve to
+the same canonical month:
+
+```console
+$ nepkit bs2ad "1 Baishakh 2083"
+AD 14 Apr 2026 (2026-04-14) Tue
+
+$ nepkit bs2ad "१५ साउन २०८१"
+AD 30 Jul 2024 (2024-07-30) Tue
+```
+
 ### As JSON
 
 Both directions emit the same object, so a caller never has to know which way
@@ -192,9 +204,11 @@ Chaitra 18 - Baisakh 17, 2082/2083
 ### Named month input
 
 The month argument accepts a name too, case-insensitively, alongside the
-numeric `1`-`12` form -- `calbs` matches BS names, `calad` matches English
-names or 3-letter abbreviations. Neither takes `--script`; this is input
-flexibility, not Devnagari support.
+numeric `1`-`12` form -- `calbs` matches BS names (a common romanisation
+variant or Devnagari name too, same as `bs2ad`/`ad2bs`; see
+[Named dates](#named-dates)), `calad` matches English names or 3-letter
+abbreviations. Neither takes `--script`; this is input flexibility, not
+Devnagari support.
 
 ```console
 $ nepkit calbs 2081 Shrawan
@@ -314,11 +328,12 @@ calendar the number belongs to.
 same way `--color` is ignored there: machine-readable output should not shift
 shape based on a human-readability preference.
 
-`calbs`/`calad` don't take `--script` -- the grid renderer's own Devnagari
-support (`nepkit.render.bs_month_grid(..., devnagari=True)` and friends) is
-there for library use, not wired into those two commands. `BS_MONTH_NAMES_NE`
-is exported from the top-level package alongside `BS_MONTH_NAMES` for the
-same reason.
+`calbs`/`calad` don't take `--script` -- the library's own Devnagari support
+(`nepkit.format_bs_date(..., devnagari=True)`, `nepkit.bs_month_name(...,
+devnagari=True)`, `nepkit.render.bs_month_grid(..., devnagari=True)` and
+friends) is there for library use, not wired into those two commands.
+`BS_MONTH_NAMES_NE` is exported from the top-level package alongside
+`BS_MONTH_NAMES` for the same reason.
 
 ---
 
@@ -531,6 +546,32 @@ BS_MONTH_NAMES[3]  # 'Shrawan'
 __version__  # '0.3.0'
 ```
 
+`BSDate` mirrors `datetime.date`'s string handling, and `parse_bs_date`/
+`format_bs_date` cover exactly what `bs2ad`/`ad2bs`'s argument and output do
+-- the same romanisation variants and Devnagari names from
+[Named dates](#named-dates) work here too, since the CLI calls these directly:
+
+```python
+from nepkit import BSDate, format_bs_date, parse_ad_date, parse_bs_date
+
+bs = BSDate(2081, 4, 15)
+str(bs)  # '2081-04-15'
+BSDate.fromisoformat("2081-04-15")  # BSDate(year=2081, month=4, day=15)
+
+parse_bs_date("15 Baishakh 2081")  # BSDate(year=2081, month=1, day=15)
+parse_bs_date("१५ साउन २०८१")  # BSDate(year=2081, month=4, day=15)
+
+format_bs_date(bs, named=True)  # '15 Shrawan 2081'
+format_bs_date(bs, named=True, devnagari=True)  # '१५ साउन २०८१'
+
+parse_ad_date("30 Jul 2024")  # date(2024, 7, 30)
+```
+
+`format_ad_date` is the Gregorian counterpart; `parse_bs_month`/`parse_ad_month`
+parse just the month half, the same thing `calbs`/`calad`'s argument does.
+`bs_month_name`, `weekday_name`, and `to_devnagari_numerals` are the smaller
+pieces those four are built from.
+
 `BSDateTime` adds a time of day, in Nepal Standard Time -- both calendars
 change date at the same midnight instant in NPT, so the time carries straight
 through the conversion unchanged:
@@ -555,6 +596,16 @@ from datetime import UTC
 
 ad_datetime_to_bs_datetime(datetime(2024, 7, 30, 14, 32, 7, tzinfo=UTC))
 # raises InvalidDateError -- convert to NPT with .astimezone() first
+```
+
+`BSDateTime` mirrors `BSDate`'s string handling too, joining the date and
+time halves with `T` by default, a space with `str()`:
+
+```python
+bdt = BSDateTime(BSDate(2081, 4, 15), time(14, 32, 7))
+str(bdt)  # '2081-04-15 14:32:07'
+bdt.isoformat()  # '2081-04-15T14:32:07'
+BSDateTime.fromisoformat("2081-04-15T14:32:07") == bdt  # True
 ```
 
 `BSDate` validates on construction, so holding one means it is a real date in

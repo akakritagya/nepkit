@@ -19,7 +19,6 @@ but I have no data for it"; collapsing both into 1 would throw that away at the
 one boundary where it is most useful.
 """
 
-import calendar
 import json
 import shlex
 import sys
@@ -36,8 +35,8 @@ from rich.console import Console
 from rich.panel import Panel
 from typer.main import get_command
 
-from nepkit.calendar_data import BS_MONTH_NAMES, MAX_BS_YEAR, MIN_BS_YEAR
-from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
+from nepkit.calendar_data import MAX_BS_YEAR, MIN_BS_YEAR
+from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 from nepkit.render import (
     ACCENT,
@@ -45,26 +44,22 @@ from nepkit.render import (
     ad_month_grid,
     block_width,
     bs_month_grid,
-    bs_month_name,
     render_body_markup,
     render_plain,
+)
+from nepkit.text import (
+    format_ad_date,
+    format_bs_date,
+    parse_ad_date,
+    parse_ad_month,
+    parse_bs_date,
+    parse_bs_month,
     to_devnagari_numerals,
     weekday_name,
 )
 
 EXIT_INVALID_DATE: Final[int] = 3
 EXIT_OUT_OF_RANGE: Final[int] = 4
-
-_DATE_PARTS: Final[int] = 3
-
-# Lowercased month name/abbreviation -> 1-12, so `_parse_named_ymd` can match
-# "Baisakh"/"baisakh"/"BAISAKH" alike without special-casing case anywhere else.
-_BS_MONTH_LOOKUP: Final[dict[str, int]] = {
-    name.lower(): number for number, name in enumerate(BS_MONTH_NAMES, start=1)
-}
-_AD_MONTH_LOOKUP: Final[dict[str, int]] = {
-    name.lower(): number for number, name in enumerate(calendar.month_name) if name
-} | {abbr.lower(): number for number, abbr in enumerate(calendar.month_abbr) if abbr}
 
 app = typer.Typer(
     name="nepkit",
@@ -240,15 +235,14 @@ def _today_line() -> str:
     ad = now.date()
     day = weekday_name(ad)
     time_text = now.strftime("%H:%M")
+    ad_named = format_ad_date(ad, named=True)
     if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
         return (
-            f"[dim]Today [/dim] {time_text} NPT  AD {_format_ad_named(ad)} {day}  "
+            f"[dim]Today [/dim] {time_text} NPT  AD {ad_named} {day}  "
             "[dim](outside the supported range)[/dim]"
         )
-    return (
-        f"[dim]Today [/dim] {time_text} NPT  "
-        f"BS [bold]{_format_bs_named(ad_to_bs(ad))}[/bold]   AD {_format_ad_named(ad)} {day}"
-    )
+    bs_named = format_bs_date(ad_to_bs(ad), named=True)
+    return f"[dim]Today [/dim] {time_text} NPT  BS [bold]{bs_named}[/bold]   AD {ad_named} {day}"
 
 
 def _print_banner(*, editing: bool) -> None:
@@ -418,245 +412,6 @@ def _reported_as_exit_code() -> Generator[None, None, None]:
         raise typer.Exit(EXIT_OUT_OF_RANGE) from exc
 
 
-def _parse_ymd(text: str) -> tuple[int, int, int]:
-    """Parse YYYY-MM-DD without regard to which calendar it belongs to.
-
-    Both directions go through this so that identical garbage produces an
-    identical exit code either way.
-
-    Parameters
-    ----------
-    text : str
-        The date string to parse.
-
-    Returns
-    -------
-    tuple of (int, int, int)
-        The `(year, month, day)` parsed from `text`.
-
-    Raises
-    ------
-    InvalidDateError
-        If `text` is not in YYYY-MM-DD form.
-    """
-    parts = text.split("-")
-    # isdecimal(), not isdigit(): isdigit() also accepts characters like "²"
-    # that int() then rejects, which would let a crafted input raise
-    # ValueError here instead of the InvalidDateError this function promises.
-    if len(parts) != _DATE_PARTS or not all(part.isdecimal() for part in parts):
-        raise InvalidDateError(f"{text!r} is not a date in YYYY-MM-DD form")
-    year, month, day = (int(part) for part in parts)
-    return year, month, day
-
-
-def _parse_named_ymd(text: str, month_lookup: dict[str, int]) -> tuple[int, int, int] | None:
-    """Parse "D Month YYYY", the month matched case-insensitively against `month_lookup`.
-
-    Parameters
-    ----------
-    text : str
-        The date string to parse.
-    month_lookup : dict of str to int
-        Lowercased month name/abbreviation mapped to its 1-12 number.
-
-    Returns
-    -------
-    tuple of (int, int, int) or None
-        The `(year, month, day)` parsed from `text`, or None if `text` does
-        not even have the "word word word" shape -- the caller falls back to
-        the numeric form in that case instead of raising.
-
-    Raises
-    ------
-    InvalidDateError
-        If `text` has that shape but its month word is not recognised.
-    """
-    parts = text.split()
-    # isdecimal(), not isdigit(): see the matching note in `_parse_ymd`.
-    if len(parts) != _DATE_PARTS or not parts[0].isdecimal() or not parts[2].isdecimal():
-        return None
-    day_text, month_text, year_text = parts
-    month = month_lookup.get(month_text.lower())
-    if month is None:
-        raise InvalidDateError(f"{month_text!r} is not a recognised month name")
-    return int(year_text), month, int(day_text)
-
-
-def _parse_date_text(text: str, month_lookup: dict[str, int]) -> tuple[int, int, int]:
-    """Parse "YYYY-MM-DD" or "D Month YYYY" without regard to which calendar it belongs to.
-
-    Both directions go through this so that identical garbage produces an
-    identical exit code either way, and so either calendar's command accepts
-    either form.
-
-    Parameters
-    ----------
-    text : str
-        The date string to parse.
-    month_lookup : dict of str to int
-        Lowercased month name/abbreviation mapped to its 1-12 number, used
-        only for the named form.
-
-    Returns
-    -------
-    tuple of (int, int, int)
-        The `(year, month, day)` parsed from `text`.
-
-    Raises
-    ------
-    InvalidDateError
-        If `text` is in neither form.
-    """
-    if "-" in text:
-        return _parse_ymd(text)
-    named = _parse_named_ymd(text, month_lookup)
-    if named is None:
-        raise InvalidDateError(f"{text!r} is not a date in 'YYYY-MM-DD' or 'D Month YYYY' form")
-    return named
-
-
-def _parse_month(month_text: str, month_lookup: dict[str, int]) -> int:
-    """Parse a month argument as a number 1-12 or a name matched case-insensitively.
-
-    Range (1-12) is not checked here -- `bs_month_grid`/`ad_month_grid`
-    already validate that, and duplicating it here would just be two places
-    that could disagree.
-
-    Parameters
-    ----------
-    month_text : str
-        The raw command-line argument.
-    month_lookup : dict of str to int
-        Lowercased month name/abbreviation mapped to its 1-12 number.
-
-    Returns
-    -------
-    int
-        The parsed month number.
-
-    Raises
-    ------
-    InvalidDateError
-        If `month_text` is neither a plain number nor a recognised month
-        name.
-    """
-    if month_text.isdecimal():
-        return int(month_text)
-    month = month_lookup.get(month_text.lower())
-    if month is None:
-        raise InvalidDateError(f"{month_text!r} is not a recognised month name")
-    return month
-
-
-def _parse_bs(text: str) -> BSDate:
-    """Parse a Bikram Sambat date string.
-
-    Parameters
-    ----------
-    text : str
-        The date, as "YYYY-MM-DD" or "D Month YYYY" (e.g. "1 Baisakh 2083"),
-        the month matched case-insensitively.
-
-    Returns
-    -------
-    BSDate
-        The parsed and validated BS date.
-
-    Raises
-    ------
-    InvalidDateError
-        If `text` is not a real BS date.
-    DateOutOfRangeError
-        If the year is outside the bundled table's range.
-    """
-    year, month, day = _parse_date_text(text, _BS_MONTH_LOOKUP)
-    return BSDate(year=year, month=month, day=day)  # validates against the table
-
-
-def _parse_ad(text: str) -> date:
-    """Parse a Gregorian date string.
-
-    Parameters
-    ----------
-    text : str
-        The date, as "YYYY-MM-DD" or "D Month YYYY" (e.g. "1 Jan 2000"), the
-        month matched case-insensitively against either the full English
-        name or its 3-letter abbreviation.
-
-    Returns
-    -------
-    date
-        The parsed Gregorian date.
-
-    Raises
-    ------
-    InvalidDateError
-        If `text` is not a real Gregorian date.
-    """
-    year, month, day = _parse_date_text(text, _AD_MONTH_LOOKUP)
-    try:
-        return date(year, month, day)
-    except ValueError as exc:
-        raise InvalidDateError(f"AD {text} is not a real Gregorian date") from exc
-
-
-def _format_bs(bs: BSDate, *, devnagari: bool = False) -> str:
-    """Format a BSDate as zero-padded YYYY-MM-DD.
-
-    Parameters
-    ----------
-    bs : BSDate
-        The date to format.
-    devnagari : bool, optional
-        Render the digits in Devnagari. Default is False.
-
-    Returns
-    -------
-    str
-        The formatted date.
-    """
-    text = f"{bs.year:04d}-{bs.month:02d}-{bs.day:02d}"
-    return to_devnagari_numerals(text) if devnagari else text
-
-
-def _format_bs_named(bs: BSDate, *, devnagari: bool = False) -> str:
-    """Format a BSDate as "day month year", e.g. "1 Baisakh 2083".
-
-    Parameters
-    ----------
-    bs : BSDate
-        The date to format.
-    devnagari : bool, optional
-        Render the month name and digits in Devnagari. Default is False.
-
-    Returns
-    -------
-    str
-        The formatted date.
-    """
-    text = f"{bs.day} {bs_month_name(bs.month, devnagari=devnagari)} {bs.year}"
-    return to_devnagari_numerals(text) if devnagari else text
-
-
-def _format_ad_named(ad: date) -> str:
-    """Format an AD date as "day month year", e.g. "12 Aug 2026".
-
-    Always Latin: there is no Devnagari table for Gregorian month names, so
-    this ignores script choice the way the grid titles already do.
-
-    Parameters
-    ----------
-    ad : date
-        The date to format.
-
-    Returns
-    -------
-    str
-        The formatted date.
-    """
-    return f"{ad.day} {calendar.month_abbr[ad.month]} {ad.year}"
-
-
 def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -> None:
     """Print a month grid as JSON, plain text, or a coloured panel.
 
@@ -755,19 +510,16 @@ def bs_to_ad_command(
         Default is `Script.latin`.
     """
     with _reported_as_exit_code():
-        bs = _parse_bs(bs_date)
+        bs = parse_bs_date(bs_date)
         ad = bs_to_ad(bs)
     if as_json:
         typer.echo(
-            json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
+            json.dumps({"bs": bs.isoformat(), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
         )
         return
     devnagari = script is Script.devnagari
-    ad_named, ad_iso = _format_ad_named(ad), ad.isoformat()
-    if devnagari:
-        # Digits translate; "Jul" has no Devnagari table and stays Latin, the
-        # same rule the grid titles already follow.
-        ad_named, ad_iso = to_devnagari_numerals(ad_named), to_devnagari_numerals(ad_iso)
+    ad_named = format_ad_date(ad, named=True, devnagari=devnagari)
+    ad_iso = format_ad_date(ad, devnagari=devnagari)
     typer.echo(f"AD {ad_named} ({ad_iso}) {weekday_name(ad, devnagari=devnagari)}")
 
 
@@ -801,16 +553,16 @@ def ad_to_bs_command(
         Default is `Script.latin`.
     """
     with _reported_as_exit_code():
-        ad = _parse_ad(ad_date)
+        ad = parse_ad_date(ad_date)
         bs = ad_to_bs(ad)
     if as_json:
         typer.echo(
-            json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
+            json.dumps({"bs": bs.isoformat(), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
         )
         return
     devnagari = script is Script.devnagari
-    bs_named = _format_bs_named(bs, devnagari=devnagari)
-    bs_iso = _format_bs(bs, devnagari=devnagari)
+    bs_named = format_bs_date(bs, named=True, devnagari=devnagari)
+    bs_iso = format_bs_date(bs, devnagari=devnagari)
     typer.echo(f"BS {bs_named} ({bs_iso}) {weekday_name(ad, devnagari=devnagari)}")
 
 
@@ -840,10 +592,10 @@ def today_command(as_json: JsonOption = False, script: ScriptOption = Script.dev
         typer.echo(
             json.dumps(
                 {
-                    "bs": _format_bs(bs),
-                    "bs_text": _format_bs_named(bs),
+                    "bs": bs.isoformat(),
+                    "bs_text": format_bs_date(bs, named=True),
                     "ad": ad.isoformat(),
-                    "ad_text": _format_ad_named(ad),
+                    "ad_text": format_ad_date(ad, named=True),
                     "time": now.strftime("%H:%M:%S"),
                     "weekday": weekday_name(ad),
                 }
@@ -860,8 +612,8 @@ def today_command(as_json: JsonOption = False, script: ScriptOption = Script.dev
     # touches the BS line: there is no Devnagari table for Gregorian month
     # names, so AD's date, time, and weekday stay Latin regardless of script,
     # the same rule the grid titles already follow.
-    typer.echo(f"BS {_format_bs_named(bs, devnagari=devnagari)} {bs_time_text} {bs_day}")
-    typer.echo(f"AD {_format_ad_named(ad)} {ad_time_text} {ad_day}")
+    typer.echo(f"BS {format_bs_date(bs, named=True, devnagari=devnagari)} {bs_time_text} {bs_day}")
+    typer.echo(f"AD {format_ad_date(ad, named=True)} {ad_time_text} {ad_day}")
 
 
 @app.command("range", help="Print the date range nepkit has data for.")
@@ -876,7 +628,7 @@ def range_command(as_json: JsonOption = False, script: ScriptOption = Script.lat
         Script for the printed range. Ignored when `as_json` is True.
         Default is `Script.latin`.
     """
-    bs_min, bs_max = f"{MIN_BS_YEAR:04d}-01-01", _format_bs(ad_to_bs(MAX_AD_DATE))
+    bs_min, bs_max = f"{MIN_BS_YEAR:04d}-01-01", ad_to_bs(MAX_AD_DATE).isoformat()
     if as_json:
         typer.echo(
             json.dumps(
@@ -924,7 +676,7 @@ def calbs_command(
         When to colourise the grid. Default is `ColorMode.auto`.
     """
     with _reported_as_exit_code():
-        month_number = _parse_month(month, _BS_MONTH_LOOKUP) if month is not None else None
+        month_number = parse_bs_month(month) if month is not None else None
         current = ad_to_bs(_today()) if MIN_AD_DATE <= _today() <= MAX_AD_DATE else None
         if year is None or month_number is None:
             if current is None:
@@ -961,7 +713,7 @@ def calad_command(
         When to colourise the grid. Default is `ColorMode.auto`.
     """
     with _reported_as_exit_code():
-        month_number = _parse_month(month, _AD_MONTH_LOOKUP) if month is not None else None
+        month_number = parse_ad_month(month) if month is not None else None
         today = _today()
         grid = ad_month_grid(year or today.year, month_number or today.month, today=today)
     _emit_grid(grid, "ad", as_json=as_json, color=color)
