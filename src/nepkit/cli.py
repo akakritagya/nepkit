@@ -19,15 +19,16 @@ but I have no data for it"; collapsing both into 1 would throw that away at the
 one boundary where it is most useful.
 """
 
+import calendar
 import json
 import shlex
 import sys
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import date, datetime
 from enum import StrEnum
 from importlib.metadata import version
-from typing import Annotated, Final
+from typing import Annotated, Any, Final, cast
 from zoneinfo import ZoneInfo
 
 import typer
@@ -44,9 +45,10 @@ from nepkit.render import (
     ad_month_grid,
     block_width,
     bs_month_grid,
+    bs_month_name,
     render_body_markup,
     render_plain,
-    to_devanagari_numerals,
+    to_devnagari_numerals,
     weekday_name,
 )
 
@@ -105,14 +107,14 @@ class Script(StrEnum):
     ----------
     latin
         Romanised month names, ASCII digits (the current behaviour).
-    devanagari
-        Devanagari BS month names, Devanagari digits everywhere. Gregorian
-        month names (e.g. "July") have no Devanagari table and are always
+    devnagari
+        Devnagari BS month names, Devnagari digits everywhere. Gregorian
+        month names (e.g. "July") have no Devnagari table and are always
         Latin, whichever script is chosen.
     """
 
     latin = "latin"
-    devanagari = "devanagari"
+    devnagari = "devnagari"
 
 
 def _today() -> date:
@@ -340,6 +342,24 @@ VersionOption = Annotated[
 ]
 
 
+def _ensure_utf8_stdio() -> None:
+    """Force stdout/stderr to UTF-8, in place of a Windows console's ANSI codepage.
+
+    `today` defaults to `--script devnagari`, and every other command accepts
+    it, so Devanagari output is no longer opt-in. `typer.echo` writes straight
+    to `sys.stdout`, which on Windows defaults to the console's codepage
+    (commonly cp1252) -- a stream that cannot encode Devanagari at all raises
+    `UnicodeEncodeError` on the first such character. This has to run before
+    anything is printed.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        # Not every stream supports reconfigure (some test doubles don't), and
+        # a stream already mid-write cannot change encoding -- either way,
+        # printing has to proceed rather than crash on the encoding fix itself.
+        with suppress(AttributeError, ValueError, OSError):
+            cast(Any, stream).reconfigure(encoding="utf-8")
+
+
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context, show_version: VersionOption = False) -> None:
     """Bikram Sambat <-> Gregorian date conversion.
@@ -353,6 +373,7 @@ def main(ctx: typer.Context, show_version: VersionOption = False) -> None:
         Whether `--version` was passed. Handled entirely by
         `_version_callback`; unused here beyond declaring the option.
     """
+    _ensure_utf8_stdio()
     if ctx.invoked_subcommand is not None:
         return
     if not _stdin_is_interactive():
@@ -465,15 +486,15 @@ def _parse_ad(text: str) -> date:
         raise InvalidDateError(f"AD {text} is not a real Gregorian date") from exc
 
 
-def _format_bs(bs: BSDate, *, devanagari: bool = False) -> str:
+def _format_bs(bs: BSDate, *, devnagari: bool = False) -> str:
     """Format a BSDate as zero-padded YYYY-MM-DD.
 
     Parameters
     ----------
     bs : BSDate
         The date to format.
-    devanagari : bool, optional
-        Render the digits in Devanagari. Default is False.
+    devnagari : bool, optional
+        Render the digits in Devnagari. Default is False.
 
     Returns
     -------
@@ -481,7 +502,45 @@ def _format_bs(bs: BSDate, *, devanagari: bool = False) -> str:
         The formatted date.
     """
     text = f"{bs.year:04d}-{bs.month:02d}-{bs.day:02d}"
-    return to_devanagari_numerals(text) if devanagari else text
+    return to_devnagari_numerals(text) if devnagari else text
+
+
+def _format_bs_named(bs: BSDate, *, devnagari: bool = False) -> str:
+    """Format a BSDate as "day month year", e.g. "1 Baisakh 2083".
+
+    Parameters
+    ----------
+    bs : BSDate
+        The date to format.
+    devnagari : bool, optional
+        Render the month name and digits in Devnagari. Default is False.
+
+    Returns
+    -------
+    str
+        The formatted date.
+    """
+    text = f"{bs.day} {bs_month_name(bs.month, devnagari=devnagari)} {bs.year}"
+    return to_devnagari_numerals(text) if devnagari else text
+
+
+def _format_ad_named(ad: date) -> str:
+    """Format an AD date as "day month year", e.g. "12 Aug 2026".
+
+    Always Latin: there is no Devnagari table for Gregorian month names, so
+    this ignores script choice the way the grid titles already do.
+
+    Parameters
+    ----------
+    ad : date
+        The date to format.
+
+    Returns
+    -------
+    str
+        The formatted date.
+    """
+    return f"{ad.day} {calendar.month_abbr[ad.month]} {ad.year}"
 
 
 def _emit_grid(grid: MonthGrid, kind: str, *, as_json: bool, color: ColorMode) -> None:
@@ -566,9 +625,9 @@ def bs_to_ad_command(
             json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
         )
         return
-    devanagari = script is Script.devanagari
-    ad_text = to_devanagari_numerals(ad.isoformat()) if devanagari else ad.isoformat()
-    typer.echo(f"{ad_text} {weekday_name(ad, devanagari=devanagari)}")
+    devnagari = script is Script.devnagari
+    ad_text = to_devnagari_numerals(ad.isoformat()) if devnagari else ad.isoformat()
+    typer.echo(f"{ad_text} {weekday_name(ad, devnagari=devnagari)}")
 
 
 @app.command("ad2bs", help="Convert a Gregorian date to Bikram Sambat.")
@@ -597,13 +656,18 @@ def ad_to_bs_command(
             json.dumps({"bs": _format_bs(bs), "ad": ad.isoformat(), "weekday": weekday_name(ad)})
         )
         return
-    devanagari = script is Script.devanagari
-    typer.echo(f"{_format_bs(bs, devanagari=devanagari)} {weekday_name(ad, devanagari=devanagari)}")
+    devnagari = script is Script.devnagari
+    typer.echo(f"{_format_bs(bs, devnagari=devnagari)} {weekday_name(ad, devnagari=devnagari)}")
 
 
 @app.command("today", help="Print today's date in both calendars.")
-def today_command(as_json: JsonOption = False, script: ScriptOption = Script.latin) -> None:
+def today_command(as_json: JsonOption = False, script: ScriptOption = Script.devnagari) -> None:
     """Print today's date in both calendars.
+
+    The plain-text lines use named dates, e.g. "BS 1 Baisakh 2083" and
+    "AD 12 Aug 2026". JSON keeps the numeric "bs"/"ad" fields for machine
+    consumption and adds "bs_text"/"ad_text" alongside them with the same
+    named form shown in plain text.
 
     Parameters
     ----------
@@ -611,7 +675,8 @@ def today_command(as_json: JsonOption = False, script: ScriptOption = Script.lat
         Emit machine-readable JSON instead of plain text. Default is False.
     script : Script, optional
         Script for the printed dates. Ignored when `as_json` is True.
-        Default is `Script.latin`.
+        Default is `Script.devnagari`, unlike `bs2ad`/`ad2bs`/`range`, which
+        default to `Script.latin`.
     """
     now = _now_npt()
     ad = now.date()
@@ -622,28 +687,27 @@ def today_command(as_json: JsonOption = False, script: ScriptOption = Script.lat
             json.dumps(
                 {
                     "bs": _format_bs(bs),
+                    "bs_text": _format_bs_named(bs),
                     "ad": ad.isoformat(),
+                    "ad_text": _format_ad_named(ad),
                     "time": now.strftime("%H:%M:%S"),
                     "weekday": weekday_name(ad),
                 }
             )
         )
         return
-    devanagari = script is Script.devanagari
-    day = weekday_name(ad, devanagari=devanagari)
-    ad_text = to_devanagari_numerals(ad.isoformat()) if devanagari else ad.isoformat()
+    devnagari = script is Script.devnagari
     time_text = now.strftime("%H:%M")
-    if devanagari:
-        time_text = to_devanagari_numerals(time_text)
+    ad_time_text, ad_day = time_text, weekday_name(ad)
+    bs_time_text = to_devnagari_numerals(time_text) if devnagari else time_text
+    bs_day = weekday_name(ad, devnagari=devnagari)
     # Two labelled lines, the same shape `range` prints, so the two commands
-    # that report a position in both calendars read alike. The time and
-    # weekday repeat on both because they are one moment: each line stays
-    # complete on its own rather than sending a reader to the other for half
-    # the answer. Minutes only, not seconds -- BSDateTime and the underlying
-    # conversion carry full precision, but a "what time is it" banner reading
-    # to the second is more precision than anyone asked for.
-    typer.echo(f"BS {_format_bs(bs, devanagari=devanagari)} {time_text} {day}")
-    typer.echo(f"AD {ad_text} {time_text} {day}")
+    # that report a position in both calendars read alike. --script only ever
+    # touches the BS line: there is no Devnagari table for Gregorian month
+    # names, so AD's date, time, and weekday stay Latin regardless of script,
+    # the same rule the grid titles already follow.
+    typer.echo(f"BS {_format_bs_named(bs, devnagari=devnagari)} {bs_time_text} {bs_day}")
+    typer.echo(f"AD {_format_ad_named(ad)} {ad_time_text} {ad_day}")
 
 
 @app.command("range", help="Print the date range nepkit has data for.")
@@ -672,13 +736,13 @@ def range_command(as_json: JsonOption = False, script: ScriptOption = Script.lat
             )
         )
         return
-    devanagari = script is Script.devanagari
+    devnagari = script is Script.devnagari
     years = f"{MIN_BS_YEAR}-{MAX_BS_YEAR}"
     ad_min, ad_max = MIN_AD_DATE.isoformat(), MAX_AD_DATE.isoformat()
-    if devanagari:
-        bs_min, bs_max = to_devanagari_numerals(bs_min), to_devanagari_numerals(bs_max)
-        years = to_devanagari_numerals(years)
-        ad_min, ad_max = to_devanagari_numerals(ad_min), to_devanagari_numerals(ad_max)
+    if devnagari:
+        bs_min, bs_max = to_devnagari_numerals(bs_min), to_devnagari_numerals(bs_max)
+        years = to_devnagari_numerals(years)
+        ad_min, ad_max = to_devnagari_numerals(ad_min), to_devnagari_numerals(ad_max)
     typer.echo(f"BS {bs_min} .. {bs_max}  (years {years})")
     typer.echo(f"AD {ad_min} .. {ad_max}")
 

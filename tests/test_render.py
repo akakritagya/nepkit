@@ -23,7 +23,7 @@ from nepkit.render import (
     render_body,
     render_body_markup,
     render_plain,
-    to_devanagari_numerals,
+    to_devnagari_numerals,
     weekday_name,
 )
 
@@ -259,7 +259,7 @@ def test_todays_highlight_is_the_bright_form_of_the_panel_accent() -> None:
     assert ACCENT in TODAY_STYLE
 
 
-# --- Devanagari script ------------------------------------------------------
+# --- Devnagari script ------------------------------------------------------
 
 
 def test_bs_month_names_ne_matches_bs_month_names_in_order() -> None:
@@ -295,13 +295,13 @@ def test_weekday_abbreviations_ne_drop_the_baar_suffix() -> None:
         ("Jul 16, 2024", "Jul १६, २०२४"),
     ],
 )
-def test_to_devanagari_numerals_translates_only_ascii_digits(text: str, expected: str) -> None:
-    assert to_devanagari_numerals(text) == expected
+def test_to_devnagari_numerals_translates_only_ascii_digits(text: str, expected: str) -> None:
+    assert to_devnagari_numerals(text) == expected
 
 
-def test_to_devanagari_numerals_is_idempotent_on_already_devanagari_text() -> None:
-    once = to_devanagari_numerals("2081")
-    assert to_devanagari_numerals(once) == once
+def test_to_devnagari_numerals_is_idempotent_on_already_devnagari_text() -> None:
+    once = to_devnagari_numerals("2081")
+    assert to_devnagari_numerals(once) == once
 
 
 @pytest.mark.parametrize(
@@ -316,79 +316,79 @@ def test_to_devanagari_numerals_is_idempotent_on_already_devanagari_text() -> No
         (date(2024, 8, 3), "शनि"),
     ],
 )
-def test_weekday_name_devanagari_covers_a_whole_week(day: date, expected: str) -> None:
-    assert weekday_name(day, devanagari=True) == expected
+def test_weekday_name_devnagari_covers_a_whole_week(day: date, expected: str) -> None:
+    assert weekday_name(day, devnagari=True) == expected
 
 
-def test_bs_month_grid_devanagari_localises_the_title_only() -> None:
+def test_bs_month_grid_devnagari_localises_the_title_only() -> None:
     """The title is BS content and localises fully; the subtitle is the AD span,
-    whose month abbreviation nepkit has no Devanagari table for -- only its
+    whose month abbreviation nepkit has no Devnagari table for -- only its
     numerals switch script."""
-    grid = bs_month_grid(2081, 4, devanagari=True)
+    grid = bs_month_grid(2081, 4, devnagari=True)
     assert grid.title == "साउन २०८१"
     assert grid.subtitle == "१६ Jul - १६ Aug २०२४"
 
 
-def test_ad_month_grid_devanagari_keeps_the_gregorian_month_name_latin() -> None:
+def test_ad_month_grid_devnagari_keeps_the_gregorian_month_name_latin() -> None:
     """The title's Gregorian month name never changes; its year still localises,
     and the subtitle's BS month names and every numeral in it both do."""
-    grid = ad_month_grid(2024, 7, devanagari=True)
+    grid = ad_month_grid(2024, 7, devnagari=True)
     assert grid.title == "July २०२४"
     assert grid.subtitle == "असार १७ - साउन १६, २०८१"
 
 
-def test_bs_month_grid_devanagari_defaults_to_latin() -> None:
-    assert bs_month_grid(2081, 4) == bs_month_grid(2081, 4, devanagari=False)
+def test_bs_month_grid_devnagari_defaults_to_latin() -> None:
+    assert bs_month_grid(2081, 4) == bs_month_grid(2081, 4, devnagari=False)
 
 
-def test_render_body_devanagari_uses_the_devanagari_header_and_digits() -> None:
-    grid = bs_month_grid(2081, 4, devanagari=True)
-    lines = render_body(grid, devanagari=True).splitlines()
+def test_render_body_devnagari_uses_the_devnagari_header_and_digits() -> None:
+    grid = bs_month_grid(2081, 4, devnagari=True)
+    lines = render_body(grid, devnagari=True).splitlines()
     assert lines[0] == "आइत  सोम मंगल  बुध  बिही शुक्र  शनि"
     assert "१" in lines[1]
     assert "1" not in "".join(lines)
 
 
-def test_render_body_devanagari_header_matches_a_full_weeks_width() -> None:
+def test_render_body_devnagari_header_matches_a_full_weeks_width() -> None:
     """A week with no leading or trailing blanks is the width the whole block
-    should be -- checked with rich's cell_len, not len(). Devanagari's vowel
+    should be -- checked with rich's cell_len, not len(). Devnagari's vowel
     signs, virama, and anusvara are extra code points that render narrower
     than a full column each, so a len()-based check could pass while the
     columns are actually crooked in a real terminal (or inside rich.Panel,
     which measures width the same way -- this is the exact bug that bit the
     coloured grid before cell_len was introduced)."""
-    grid = bs_month_grid(2081, 5, devanagari=True)  # Bhadra 2081 has no leading blanks
-    lines = render_body(grid, devanagari=True).splitlines()
+    grid = bs_month_grid(2081, 5, devnagari=True)  # Bhadra 2081 has no leading blanks
+    lines = render_body(grid, devnagari=True).splitlines()
     full_week = next(row for row in lines[1:] if "  " not in row.strip())
     assert cell_len(lines[0]) == cell_len(full_week)
 
 
-def test_render_body_devanagari_rows_share_the_headers_block_margin() -> None:
+def test_render_body_devnagari_rows_share_the_headers_block_margin() -> None:
     """Every row must start with (at least) the header's own leading margin --
     the block-centring pad `_indent` applies identically everywhere -- though a
     row can carry more on top of that from its own leading blank cells, as the
     first week of April 2026 does here. Mirrors
-    test_centring_moves_the_whole_grid_together, for the Devanagari path.
+    test_centring_moves_the_whole_grid_together, for the Devnagari path.
     """
-    grid = ad_month_grid(2026, 4, devanagari=True)
-    lines = render_body(grid, devanagari=True).splitlines()
+    grid = ad_month_grid(2026, 4, devnagari=True)
+    lines = render_body(grid, devnagari=True).splitlines()
     margin = len(lines[0]) - len(lines[0].lstrip())
     for row in lines[1:]:
         assert row.startswith(" " * margin), f"row does not share the header's indent: {row!r}"
 
 
-def test_render_plain_devanagari_centres_by_terminal_width_too() -> None:
-    grid = bs_month_grid(2081, 4, devanagari=True)
-    lines = render_plain(grid, devanagari=True).splitlines()
+def test_render_plain_devnagari_centres_by_terminal_width_too() -> None:
+    grid = bs_month_grid(2081, 4, devnagari=True)
+    lines = render_plain(grid, devnagari=True).splitlines()
     header_line = next(line for line in lines if "आइत" in line)
     block_width = max(cell_len(line) for line in lines)
     left = cell_len(header_line) - cell_len(header_line.lstrip())
     assert left == (block_width - cell_len(header_line.lstrip())) // 2
 
 
-def test_json_relevant_fields_are_unaffected_by_devanagari() -> None:
+def test_json_relevant_fields_are_unaffected_by_devnagari() -> None:
     """MonthGrid.weeks stays plain ints regardless of script -- that's what
     the CLI's --json path serialises, and it must stay machine-readable."""
-    grid = bs_month_grid(2081, 4, devanagari=True)
+    grid = bs_month_grid(2081, 4, devnagari=True)
     assert grid.weeks[1] == (6, 7, 8, 9, 10, 11, 12)
     assert all(isinstance(day, int) for week in grid.weeks for day in week if day is not None)
