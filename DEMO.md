@@ -632,6 +632,9 @@ NepkitError
 Catch `DateError` if you only need "the user gave me something I can't
 convert".
 
+For narrated, runnable scripts covering this API one use case at a time, see
+[`demo/`](demo/).
+
 ---
 
 ## Help

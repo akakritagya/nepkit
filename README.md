@@ -163,6 +163,9 @@ reasonably catch that and fall back or report the supported range. BS 2081-13-01
 is not a date at all, and catching it is always a mistake. Catch `DateError` if
 you only need "the user gave me something I can't convert".
 
+For narrated, runnable scripts covering this API one use case at a time, see
+[`demo/`](demo/).
+
 ## CLI
 
 `pip install` and `uv tool install` put a `nepkit` command on your PATH. `uv
