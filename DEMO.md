@@ -277,7 +277,7 @@ $ nepkit
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
 nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
-Today  BS 2083-04-27   AD 2026-08-12 Wed
+Today  BS 27 Shrawan 2083   AD 12 Aug 2026 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 

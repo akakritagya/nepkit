@@ -233,12 +233,12 @@ def _today_line() -> str:
     time_text = now.strftime("%H:%M")
     if not (MIN_AD_DATE <= ad <= MAX_AD_DATE):
         return (
-            f"[dim]Today [/dim] {time_text} NPT  AD {ad.isoformat()} {day}  "
+            f"[dim]Today [/dim] {time_text} NPT  AD {_format_ad_named(ad)} {day}  "
             "[dim](outside the supported range)[/dim]"
         )
     return (
         f"[dim]Today [/dim] {time_text} NPT  "
-        f"BS [bold]{_format_bs(ad_to_bs(ad))}[/bold]   AD {ad.isoformat()} {day}"
+        f"BS [bold]{_format_bs_named(ad_to_bs(ad))}[/bold]   AD {_format_ad_named(ad)} {day}"
     )
 
 

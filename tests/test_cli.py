@@ -150,7 +150,7 @@ def test_the_repl_opens_with_an_ascii_title_and_app_info(
     assert "|_| |_|" in out, "the ascii title is missing"
     assert version("nepkit") in out
     assert "Bikram Sambat" in out
-    assert "BS 2081-04-15" in out and "AD 2024-07-30" in out, "today is not shown"
+    assert "BS 15 Shrawan 2081" in out and "AD 30 Jul 2024" in out, "today is not shown"
     assert "14:32" in out, "the current time is not shown"
 
 

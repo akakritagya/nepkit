@@ -24,8 +24,9 @@ command-line tool.
 > (`27 Shrawan 2083`) and made `--script devnagari` its default, so plain
 > `nepkit today` now prints Devnagari on the BS line unless you pass
 > `--script latin`; `today --json`'s numeric `bs`/`ad` fields are unchanged,
-> with named forms added alongside as `bs_text`/`ad_text`. Pin a version if you
-> script against stdout, or use `--json` instead.
+> with named forms added alongside as `bs_text`/`ad_text`. The interactive
+> banner's date line switched the same way, from numeric to named. Pin a
+> version if you script against stdout, or use `--json` instead.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
 through every command, option, and failure mode with real captured output.
@@ -188,7 +189,7 @@ $ nepkit
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
 nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
-Today  BS 2083-04-27   AD 2026-08-12 Wed
+Today  BS 27 Shrawan 2083   AD 12 Aug 2026 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
