@@ -17,41 +17,11 @@ command-line tool.
 [![Python](https://img.shields.io/pypi/pyversions/nepkit)](https://pypi.org/project/nepkit/)
 [![License](https://img.shields.io/pypi/l/nepkit)](https://github.com/akakritagya/nepkit/blob/main/LICENSE)
 
-> **Status:** published, pre-1.0. The library and CLI both work and are tested,
-> but the API and the CLI's output shapes may still change — 0.2.0 appended the
-> weekday to `bs2ad`, `ad2bs`, and `today`, and a later release switched
-> `today`'s plain-text dates from numeric (`2083-04-27`) to named
-> (`27 Shrawan 2083`) and made `--script devnagari` its default, so plain
-> `nepkit today` now prints Devnagari on the BS line unless you pass
-> `--script latin`; `today --json`'s numeric `bs`/`ad` fields are unchanged,
-> with named forms added alongside as `bs_text`/`ad_text`. The interactive
-> banner's date line switched the same way, from numeric to named. A further
-> release changed `bs2ad`/`ad2bs`: the `BS_DATE`/`AD_DATE` argument now also
-> accepts `"D Month YYYY"` (e.g. `"1 Baisakh 2083"`, `"1 Jan 2000"`), the
-> month matched case-insensitively, alongside the original `YYYY-MM-DD`; and
-> their plain-text line changed from `2024-07-30 Tue` to
-> `AD 30 Jul 2024 (2024-07-30) Tue` (named date, ISO form in parentheses,
-> weekday) — `--json`'s `bs`/`ad`/`weekday` fields are unchanged. `calbs`'s
-> and `calad`'s month argument gained the same case-insensitive name matching
-> (`Shrawan`/`July`/`Jul`) alongside `1`-`12`; their output and `--script`
-> support (none) are unchanged. A further release promoted the CLI's date
-> parsing and formatting into the library: `BSDate`/`BSDateTime` gained
-> `isoformat()`/`fromisoformat()`/`__str__` (their `repr` is unchanged), and
-> `nepkit` now exports `parse_bs_date`/`parse_ad_date`,
-> `format_bs_date`/`format_ad_date`, `parse_bs_month`/`parse_ad_month`,
-> `bs_month_name`, `weekday_name`, and `to_devnagari_numerals`. Month-name
-> input also widened at the same time, on the CLI and in the library alike:
-> `bs2ad`/`ad2bs`/`calbs`/`parse_bs_date`/`parse_bs_month` now accept common
-> romanisation variants (`Baishakh` alongside `Baisakh`, `Sawan` alongside
-> `Shrawan`, ...) and Devnagari month names, not just the one spelling
-> `BS_MONTH_NAMES` prints; output is unaffected, and nothing that parsed
-> before stops parsing. Separately, Gregorian month names shown or parsed
-> anywhere in nepkit (`calad`'s grid title, `bs2ad`/`ad2bs`'s AD line) no
-> longer read the process locale -- they were briefly, inconsistently
-> locale-sensitive under a non-English `LC_TIME`; they are now always
-> English, matching nepkit's weekday names, which were pinned English from
-> the start. Pin a version if you script against stdout, or use `--json`
-> instead.
+> **Status:** published, pre-1.0. The library and CLI both work and are
+> tested, but the API and the CLI's output shapes may still change before
+> 1.0. Pin a version if you script against stdout, or use `--json` instead.
+> See [STATUS.md](https://github.com/akakritagya/nepkit/blob/main/STATUS.md)
+> for what's changed release to release.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
 through every command, option, and failure mode with real captured output.
@@ -210,8 +180,8 @@ $ nepkit ad2bs "30 July 2024"
 BS 15 Shrawan 2081 (2081-04-15) Tue
 
 $ nepkit today
-BS २७ साउन २०८३ बुध
-AD 12 Aug 2026 Wed
+BS २७ साउन २०८३ १४:३२ बुध
+AD 12 Aug 2026 14:32 Wed
 
 $ nepkit range
 BS 2000-01-01 .. 2090-12-30  (years 2000-2090)
@@ -225,7 +195,10 @@ could reliably guess which one you meant.
 `bs2ad`/`ad2bs` accept the date either as `YYYY-MM-DD` or as `"D Month YYYY"`
 (e.g. `"1 Baisakh 2083"`, `"1 Jan 2000"` or `"1 January 2000"`) — the month
 name matched case-insensitively either way, so `Shrawan`, `shrawan`, and
-`SHRAWAN` all work.
+`SHRAWAN` all work. The BS side also accepts common romanisation variants
+(`Baishakh` alongside `Baisakh`, `Sawan` alongside `Shrawan`, ...) and
+Devnagari month names (`साउन`), not just the one spelling `BS_MONTH_NAMES`
+prints — `calbs`'s month argument does the same.
 
 `today` defaults to `--script devnagari`, so its BS line reads Devnagari
 without any flag; pass `--script latin` for the romanised form instead. The
@@ -246,13 +219,13 @@ $ nepkit
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
 nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
-Today  BS 27 Shrawan 2083   AD 12 Aug 2026 Wed
+Today  14:32 NPT  BS 27 Shrawan 2083   AD 12 Aug 2026 14:32 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
-BS २७ साउन २०८३ बुध
-AD 12 Aug 2026 Wed
+BS २७ साउन २०८३ १४:३२ बुध
+AD 12 Aug 2026 14:32 Wed
 
 nepkit> bs2ad 2081-04-15
 AD 30 Jul 2024 (2024-07-30) Tue
@@ -304,24 +277,28 @@ Sun Mon Tue Wed Thu Fri Sat
  28  29  30  31
 ```
 
+Shown here without a box: grids are boxed and coloured only on a real
+terminal, and plain like this when redirected — piped, or captured for this
+README — the same convention `ls` and `git` follow. See
+[DEMO.md](https://github.com/akakritagya/nepkit/blob/main/DEMO.md#colour) for
+what it looks like on a terminal. Force it either way with
+`--color always|never|auto`.
+
 Both default to the current month. A Gregorian month never lines up with a BS
 month, so the subtitle names both ends of the span rather than pretending a
 single corresponding month exists.
 
 The month argument accepts a name too, case-insensitively — `calbs` matches
-BS names (`Shrawan`/`shrawan`), `calad` matches English names or 3-letter
+BS names (`Shrawan`/`shrawan`, a romanisation variant like `Sawan`, or a
+Devnagari name like `साउन`), `calad` matches English names or 3-letter
 abbreviations (`July`/`Jul`/`jul`) — alongside the numeric `1`-`12` form:
 
-```console
-$ nepkit calbs 2081 Shrawan
-$ nepkit calad 2024 Jul
+```bash
+nepkit calbs 2081 Shrawan
+nepkit calad 2024 Jul
 ```
 
 Neither command takes `--script` — see [Limitations](#limitations) below.
-
-Grids are boxed and coloured on a terminal and plain when redirected, following
-the same convention as `ls` and `git`. Force it either way with
-`--color always|never|auto`.
 
 On a terminal, today's date is picked out in bold bright cyan — the bright form
 of the box's own border colour, so the highlight belongs to the grid containing
