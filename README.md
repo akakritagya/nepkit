@@ -100,7 +100,7 @@ from nepkit import BSDate, __version__, ad_to_bs, bs_to_ad
 
 bs_to_ad(BSDate(2081, 4, 15))  # date(2024, 7, 30)
 ad_to_bs(date(2024, 7, 30))  # BSDate(year=2081, month=4, day=15)
-__version__  # "0.3.0"
+__version__  # "0.4.0"
 ```
 
 `BSDate` validates on construction, so if you are holding one it is a real date
@@ -171,7 +171,7 @@ command with `uv run nepkit` — or activate the venv first.
 
 ```console
 $ nepkit --version
-nepkit 0.3.0
+nepkit 0.4.0
 
 $ nepkit bs2ad 2081-04-15
 AD 30 Jul 2024 (2024-07-30) Tue
@@ -218,7 +218,7 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+nepkit v0.4.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
 Today  14:32 NPT  BS 27 Shrawan 2083   AD 12 Aug 2026 14:32 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
