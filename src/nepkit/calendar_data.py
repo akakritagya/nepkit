@@ -55,6 +55,29 @@ BS_MONTH_NAMES_NE: Final[tuple[str, ...]] = (
     "फागुन",
     "चैत",
 )
+# Common romanisation variants for each month, alongside the one BS_MONTH_NAMES
+# picks for output -- e.g. Nepali newspapers, calendars, and speakers write
+# Baisakh's first month as "Baishakh" and "Baisakh" about equally often. Index-
+# parallel to BS_MONTH_NAMES (position == month - 1). Already casefolded:
+# input is matched case-insensitively by casefolding it first, so an entry
+# here that wasn't already its own casefold() would simply never be reached
+# -- pinned by a test for that reason.
+# Devnagari input is handled separately, through BS_MONTH_NAMES_NE.
+BS_MONTH_ALIASES: Final[tuple[tuple[str, ...], ...]] = (
+    ("baishakh", "baisak", "baishak", "vaisakh", "vaishakh"),
+    ("jeth", "jeshtha", "jyestha", "jyeshtha"),
+    ("asar", "ashar", "asadh", "ashad", "aasar"),
+    ("shravan", "sawan", "saun", "srawan"),
+    ("bhadau", "bhado", "bhadaun"),
+    ("asoj", "ashwin", "aswin", "ashvin"),
+    ("kattik", "karthik", "kaartik"),
+    ("mansir", "mangshir", "marga", "margashirsha"),
+    ("push", "paush", "pousha", "pausha", "pus"),
+    ("maagh",),
+    ("phalgun", "fagun", "phagun"),
+    ("chait", "chaita", "chaitr", "chet"),
+)
+
 _MIN_DAYS_IN_MONTH: Final[int] = 29
 _MAX_DAYS_IN_MONTH: Final[int] = 32
 _MIN_DAYS_IN_YEAR: Final[int] = 365

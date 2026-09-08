@@ -30,6 +30,15 @@ EXPECTED_PUBLIC_API = {
     "InvalidDateError",
     "DateOutOfRangeError",
     "__version__",
+    "parse_bs_date",
+    "parse_ad_date",
+    "format_bs_date",
+    "format_ad_date",
+    "parse_bs_month",
+    "parse_ad_month",
+    "bs_month_name",
+    "weekday_name",
+    "to_devnagari_numerals",
 }
 
 
@@ -50,3 +59,11 @@ def test_the_readme_usage_example_works() -> None:
     # If this breaks, the README is lying to a stranger following it verbatim.
     assert bs_to_ad(BSDate(year=2081, month=4, day=15)) == date(2024, 7, 30)
     assert ad_to_bs(date(2024, 7, 30)) == BSDate(year=2081, month=4, day=15)
+
+
+def test_the_readme_library_text_example_works() -> None:
+    assert str(nepkit.BSDate(2081, 4, 15)) == "2081-04-15"
+    assert nepkit.BSDate.fromisoformat("2081-04-15") == BSDate(year=2081, month=4, day=15)
+    assert nepkit.parse_bs_date("15 Baishakh 2081") == BSDate(year=2081, month=1, day=15)
+    assert nepkit.format_bs_date(BSDate(2081, 4, 15), named=True) == "15 Shrawan 2081"
+    assert nepkit.parse_ad_date("30 Jul 2024") == date(2024, 7, 30)

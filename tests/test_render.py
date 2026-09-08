@@ -15,17 +15,14 @@ from nepkit.exceptions import DateOutOfRangeError, InvalidDateError
 from nepkit.render import (
     ACCENT,
     TODAY_STYLE,
-    WEEKDAY_ABBREVIATIONS,
-    WEEKDAY_ABBREVIATIONS_NE,
     WEEKDAY_HEADER,
     ad_month_grid,
     bs_month_grid,
     render_body,
     render_body_markup,
     render_plain,
-    to_devnagari_numerals,
-    weekday_name,
 )
+from nepkit.text import WEEKDAY_ABBREVIATIONS, weekday_name
 
 
 def test_there_are_twelve_bs_month_names_in_calendar_order() -> None:
@@ -205,23 +202,6 @@ def test_ad_month_grid_rejects_a_month_it_cannot_fully_convert(year: int, month:
         ad_month_grid(year, month)
 
 
-@pytest.mark.parametrize(
-    ("day", "expected"),
-    [
-        (date(2024, 7, 28), "Sun"),
-        (date(2024, 7, 29), "Mon"),
-        (date(2024, 7, 30), "Tue"),
-        (date(2024, 7, 31), "Wed"),
-        (date(2024, 8, 1), "Thu"),
-        (date(2024, 8, 2), "Fri"),
-        (date(2024, 8, 3), "Sat"),
-    ],
-)
-def test_weekday_name_covers_a_whole_week(day: date, expected: str) -> None:
-    """One known week, so an off-by-one in the Sunday-first shift cannot hide."""
-    assert weekday_name(day) == expected
-
-
 def test_weekday_abbreviations_are_the_grid_header() -> None:
     """The abbreviation and the column it sits under must never disagree.
 
@@ -278,46 +258,6 @@ def test_bs_month_names_ne_matches_bs_month_names_in_order() -> None:
         "चैत",
     )
     assert len(BS_MONTH_NAMES_NE) == len(BS_MONTH_NAMES)
-
-
-def test_weekday_abbreviations_ne_drop_the_baar_suffix() -> None:
-    assert WEEKDAY_ABBREVIATIONS_NE == ("आइत", "सोम", "मंगल", "बुध", "बिही", "शुक्र", "शनि")
-    assert len(WEEKDAY_ABBREVIATIONS_NE) == len(WEEKDAY_ABBREVIATIONS)
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("0123456789", "०१२३४५६७८९"),
-        ("2081-04-15", "२०८१-०४-१५"),
-        ("no digits here", "no digits here"),
-        ("", ""),
-        ("Jul 16, 2024", "Jul १६, २०२४"),
-    ],
-)
-def test_to_devnagari_numerals_translates_only_ascii_digits(text: str, expected: str) -> None:
-    assert to_devnagari_numerals(text) == expected
-
-
-def test_to_devnagari_numerals_is_idempotent_on_already_devnagari_text() -> None:
-    once = to_devnagari_numerals("2081")
-    assert to_devnagari_numerals(once) == once
-
-
-@pytest.mark.parametrize(
-    ("day", "expected"),
-    [
-        (date(2024, 7, 28), "आइत"),
-        (date(2024, 7, 29), "सोम"),
-        (date(2024, 7, 30), "मंगल"),
-        (date(2024, 7, 31), "बुध"),
-        (date(2024, 8, 1), "बिही"),
-        (date(2024, 8, 2), "शुक्र"),
-        (date(2024, 8, 3), "शनि"),
-    ],
-)
-def test_weekday_name_devnagari_covers_a_whole_week(day: date, expected: str) -> None:
-    assert weekday_name(day, devnagari=True) == expected
 
 
 def test_bs_month_grid_devnagari_localises_the_title_only() -> None:

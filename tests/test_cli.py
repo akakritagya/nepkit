@@ -110,6 +110,20 @@ def test_ad2bs_accepts_a_named_ad_date_with_an_abbreviated_month_name() -> None:
     assert result.stdout == "BS 15 Shrawan 2081 (2081-04-15) Tue\n"
 
 
+def test_bs2ad_accepts_a_common_romanisation_variant() -> None:
+    # "Baishakh" fails today's canonical-only lookup even though it is an
+    # entirely ordinary spelling of BS_MONTH_NAMES[0] ("Baisakh").
+    result = runner.invoke(cli.app, ["bs2ad", "1 Baishakh 2083"])
+    assert result.exit_code == 0
+    assert result.stdout == "AD 14 Apr 2026 (2026-04-14) Tue\n"
+
+
+def test_bs2ad_accepts_a_fully_devnagari_date() -> None:
+    result = runner.invoke(cli.app, ["bs2ad", "१५ साउन २०८१"])
+    assert result.exit_code == 0
+    assert result.stdout == "AD 30 Jul 2024 (2024-07-30) Tue\n"
+
+
 def test_an_unrecognised_month_word_exits_3_and_says_so_on_stderr() -> None:
     result = runner.invoke(cli.app, ["ad2bs", "30 Notamonth 2024"])
     assert result.exit_code == 3
@@ -521,6 +535,12 @@ def test_calad_accepts_an_abbreviated_ad_month_name() -> None:
     result = runner.invoke(cli.app, ["calad", "2024", "jul"])
     assert result.exit_code == 0
     assert result.stdout.splitlines()[0].strip() == "July 2024"
+
+
+def test_calbs_accepts_a_romanisation_variant() -> None:
+    result = runner.invoke(cli.app, ["calbs", "2081", "Sawan"])
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[0].strip() == "Shrawan 2081"
 
 
 @pytest.mark.parametrize("command", ["calbs", "calad"])

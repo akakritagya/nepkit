@@ -10,6 +10,9 @@ import pytest
 from nepkit import calendar_data
 from nepkit.calendar_data import (
     ANCHOR,
+    BS_MONTH_ALIASES,
+    BS_MONTH_NAMES,
+    BS_MONTH_NAMES_NE,
     MAX_BS_YEAR,
     MIN_BS_YEAR,
     TOTAL_DAYS,
@@ -227,3 +230,35 @@ def test_load_years_rejects_bad_calendar_json(
     monkeypatch.setattr(resources, "files", lambda package: _StubResource(raw_json))
     with pytest.raises(CalendarDataError, match=match):
         calendar_data._load_years()
+
+
+# --- BS_MONTH_ALIASES --------------------------------------------------------
+
+
+def test_bs_month_aliases_has_exactly_one_row_per_month() -> None:
+    assert len(BS_MONTH_ALIASES) == len(BS_MONTH_NAMES) == 12
+
+
+def test_bs_month_aliases_are_already_casefolded() -> None:
+    # A stray capital would be silently unreachable: parse_bs_month casefolds
+    # its input before looking it up, so an uncased alias here can never match.
+    for aliases in BS_MONTH_ALIASES:
+        for alias in aliases:
+            assert alias == alias.casefold(), f"{alias!r} is not casefolded"
+
+
+def test_bs_month_aliases_do_not_collide_with_each_other() -> None:
+    flattened = [alias for aliases in BS_MONTH_ALIASES for alias in aliases]
+    assert len(flattened) == len(set(flattened))
+
+
+def test_bs_month_aliases_do_not_shadow_a_canonical_name_for_a_different_month() -> None:
+    canonical = {name.casefold(): number for number, name in enumerate(BS_MONTH_NAMES, start=1)}
+    for number, aliases in enumerate(BS_MONTH_ALIASES, start=1):
+        for alias in aliases:
+            assert canonical.get(alias, number) == number
+
+    devnagari = {name: number for number, name in enumerate(BS_MONTH_NAMES_NE, start=1)}
+    for number, aliases in enumerate(BS_MONTH_ALIASES, start=1):
+        for alias in aliases:
+            assert devnagari.get(alias, number) == number

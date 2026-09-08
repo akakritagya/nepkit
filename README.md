@@ -34,8 +34,24 @@ command-line tool.
 > weekday) — `--json`'s `bs`/`ad`/`weekday` fields are unchanged. `calbs`'s
 > and `calad`'s month argument gained the same case-insensitive name matching
 > (`Shrawan`/`July`/`Jul`) alongside `1`-`12`; their output and `--script`
-> support (none) are unchanged. Pin a version if you script against stdout,
-> or use `--json` instead.
+> support (none) are unchanged. A further release promoted the CLI's date
+> parsing and formatting into the library: `BSDate`/`BSDateTime` gained
+> `isoformat()`/`fromisoformat()`/`__str__` (their `repr` is unchanged), and
+> `nepkit` now exports `parse_bs_date`/`parse_ad_date`,
+> `format_bs_date`/`format_ad_date`, `parse_bs_month`/`parse_ad_month`,
+> `bs_month_name`, `weekday_name`, and `to_devnagari_numerals`. Month-name
+> input also widened at the same time, on the CLI and in the library alike:
+> `bs2ad`/`ad2bs`/`calbs`/`parse_bs_date`/`parse_bs_month` now accept common
+> romanisation variants (`Baishakh` alongside `Baisakh`, `Sawan` alongside
+> `Shrawan`, ...) and Devnagari month names, not just the one spelling
+> `BS_MONTH_NAMES` prints; output is unaffected, and nothing that parsed
+> before stops parsing. Separately, Gregorian month names shown or parsed
+> anywhere in nepkit (`calad`'s grid title, `bs2ad`/`ad2bs`'s AD line) no
+> longer read the process locale -- they were briefly, inconsistently
+> locale-sensitive under a non-English `LC_TIME`; they are now always
+> English, matching nepkit's weekday names, which were pinned English from
+> the start. Pin a version if you script against stdout, or use `--json`
+> instead.
 
 [**DEMO.md**](https://github.com/akakritagya/nepkit/blob/main/DEMO.md) walks
 through every command, option, and failure mode with real captured output.
@@ -133,6 +149,33 @@ BSDate(2095, 1, 1)  # raises DateOutOfRangeError
 
 `ad_to_bs` takes a `datetime.date`, so a malformed Gregorian date is impossible
 by construction — Python's own constructor rejects it before nepkit is involved.
+
+`BSDate` mirrors `datetime.date`'s string handling, and `parse_bs_date`/
+`format_bs_date` (with Gregorian counterparts `parse_ad_date`/`format_ad_date`)
+cover the human-readable forms the CLI accepts and prints — the CLI is a thin
+layer over these, not a separate implementation:
+
+```python
+from nepkit import BSDate, format_bs_date, parse_ad_date, parse_bs_date
+
+bs = BSDate(2081, 4, 15)
+str(bs)  # "2081-04-15"
+BSDate.fromisoformat("2081-04-15")  # BSDate(year=2081, month=4, day=15)
+
+# "D Month YYYY", the month matched case-insensitively against a common
+# romanisation variant or Devnagari, not just BS_MONTH_NAMES's one spelling
+parse_bs_date("15 Baishakh 2081")  # BSDate(year=2081, month=1, day=15)
+
+format_bs_date(bs, named=True)  # "15 Shrawan 2081"
+format_bs_date(bs, named=True, devnagari=True)  # "१५ साउन २०८१"
+
+parse_ad_date("30 Jul 2024")  # date(2024, 7, 30)
+```
+
+`BSDate.isoformat()`'s result is not an ISO 8601 date — `datetime.date.fromisoformat`
+will accept it and silently return a different, wrong Gregorian day. It is
+only ever meaningful alongside something that says it is Bikram Sambat, the
+same way nepkit's CLI always prints a `BS`/`AD` label alongside it.
 
 ### Errors
 
@@ -349,6 +392,13 @@ the standard library.
 `datetime.date` rather than three integers, which removes an entire error class
 from its contract at no cost.
 
+**Human-text parsing and formatting are library code, not CLI code.** The CLI
+used to own `parse_bs_date`/`format_bs_date` and friends as private helpers,
+which meant a library caller could not parse `"1 Baisakh 2083"` into a
+`BSDate`, or format one back into that form, at all -- only the CLI process
+could. They moved into the library so the CLI is provably a thin layer over
+it rather than a second implementation that has to be kept in sync by hand.
+
 ## Limitations
 
 - **Time of day works only in Nepal Standard Time (UTC+05:45).** `BSDateTime`
@@ -360,8 +410,9 @@ from its contract at no cost.
   no `--time` flag on `bs2ad`/`ad2bs`.
 - **Devnagari formatting stops at the calendar grid.** `--script devnagari`
   covers `bs2ad`/`ad2bs`/`today`/`range` and the library
-  (`nepkit.BS_MONTH_NAMES_NE`, `nepkit.render`'s grid functions); `calbs` and
-  `calad` render Latin only. `today` defaults to `--script devnagari` (the
+  (`nepkit.BS_MONTH_NAMES_NE`, `nepkit.format_bs_date`/`nepkit.bs_month_name`'s
+  `devnagari` flag, and `nepkit.render`'s grid functions); `calbs` and `calad`
+  render Latin only. `today` defaults to `--script devnagari` (the
   others default to `latin`), and its AD line is Latin regardless of
   `--script` -- there is no Devnagari table for Gregorian month names, so the
   option only ever touches its BS line. See

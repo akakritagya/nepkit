@@ -12,21 +12,16 @@ from typing import Final
 
 from rich.cells import cell_len
 
-from nepkit.calendar_data import BS_MONTH_NAMES, BS_MONTH_NAMES_NE, days_in_month
+from nepkit.calendar_data import days_in_month
 from nepkit.convert import MAX_AD_DATE, MIN_AD_DATE, BSDate, ad_to_bs, bs_to_ad
 from nepkit.exceptions import DateOutOfRangeError
-
-WEEKDAY_ABBREVIATIONS: Final[tuple[str, ...]] = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-# Each name drops the shared "-बार" suffix (Sunday: आइतबार -> आइत), the same move
-# BS_MONTH_NAMES_NE makes picking one spelling out of several real ones.
-WEEKDAY_ABBREVIATIONS_NE: Final[tuple[str, ...]] = (
-    "आइत",
-    "सोम",
-    "मंगल",
-    "बुध",
-    "बिही",
-    "शुक्र",
-    "शनि",
+from nepkit.text import (
+    AD_MONTH_ABBREVIATIONS,
+    AD_MONTH_NAMES,
+    WEEKDAY_ABBREVIATIONS,
+    WEEKDAY_ABBREVIATIONS_NE,
+    bs_month_name,
+    to_devnagari_numerals,
 )
 
 _DAYS_PER_WEEK: Final[int] = 7
@@ -41,45 +36,6 @@ _CELL_WIDTH: Final[int] = 3
 _DEVNAGARI_CELL_WIDTH: Final[int] = max(
     _CELL_WIDTH, *(cell_len(name) for name in WEEKDAY_ABBREVIATIONS_NE)
 )
-
-_DEVNAGARI_DIGITS: Final[str] = "०१२३४५६७८९"
-_TO_DEVNAGARI_DIGITS: Final[dict[int, int]] = str.maketrans("0123456789", _DEVNAGARI_DIGITS)
-
-
-def to_devnagari_numerals(text: str) -> str:
-    """Translate every ASCII digit in `text` to its Devnagari counterpart.
-
-    Parameters
-    ----------
-    text : str
-        Text that may contain ASCII digits 0-9. Non-digit characters, and any
-        digit already in another script, pass through unchanged.
-
-    Returns
-    -------
-    str
-        `text` with every ASCII digit 0-9 replaced by its Devnagari form.
-    """
-    return text.translate(_TO_DEVNAGARI_DIGITS)
-
-
-def bs_month_name(month: int, *, devnagari: bool) -> str:
-    """Look up BS month `month`'s name in the requested script.
-
-    Parameters
-    ----------
-    month : int
-        The Bikram Sambat month, 1-12.
-    devnagari : bool
-        Whether to use BS_MONTH_NAMES_NE instead of BS_MONTH_NAMES.
-
-    Returns
-    -------
-    str
-        The month's name.
-    """
-    names = BS_MONTH_NAMES_NE if devnagari else BS_MONTH_NAMES
-    return names[month - 1]
 
 
 def _pad_left(text: str, width: int) -> str:
@@ -214,33 +170,6 @@ def _sunday_first_index(day: date) -> int:
     return (day.weekday() + 1) % _DAYS_PER_WEEK
 
 
-def weekday_name(day: date, *, devnagari: bool = False) -> str:
-    """Look up the Sunday-first weekday abbreviation for a Gregorian date.
-
-    Deliberately not strftime("%a"), which is locale-dependent: under
-    LC_TIME=fr_FR that yields "mer." while the grid header still says "Wed".
-    Reading the name out of a fixed tuple means the abbreviation and the column
-    it sits under can never disagree, and the output is byte-identical on every
-    machine -- which DEMO.md's captured blocks rely on, and CI now checks on
-    three platforms.
-
-    Parameters
-    ----------
-    day : date
-        The date to name.
-    devnagari : bool, optional
-        Whether to use WEEKDAY_ABBREVIATIONS_NE instead of
-        WEEKDAY_ABBREVIATIONS. Default is False.
-
-    Returns
-    -------
-    str
-        A weekday abbreviation, e.g. "Wed" or "बुध".
-    """
-    names = WEEKDAY_ABBREVIATIONS_NE if devnagari else WEEKDAY_ABBREVIATIONS
-    return names[_sunday_first_index(day)]
-
-
 def _build_weeks(lead_blanks: int, total_days: int) -> tuple[tuple[int | None, ...], ...]:
     """Lay `total_days` numbered cells into Sunday-first weeks.
 
@@ -309,7 +238,9 @@ def bs_month_grid(
     last_ad = first_ad + timedelta(days=total_days - 1)
 
     title = f"{bs_month_name(month, devnagari=devnagari)} {year}"
-    span = f"{first_ad.strftime('%d %b')} - {last_ad.strftime('%d %b %Y')}"
+    start = f"{first_ad.day:02d} {AD_MONTH_ABBREVIATIONS[first_ad.month - 1]}"
+    end = f"{last_ad.day:02d} {AD_MONTH_ABBREVIATIONS[last_ad.month - 1]} {last_ad.year}"
+    span = f"{start} - {end}"
     if devnagari:
         title, span = to_devnagari_numerals(title), to_devnagari_numerals(span)
     marked = today.day if today is not None and (today.year, today.month) == (year, month) else None
@@ -376,7 +307,7 @@ def ad_month_grid(
     years = (
         str(first_bs.year) if first_bs.year == last_bs.year else f"{first_bs.year}/{last_bs.year}"
     )
-    title = f"{calendar.month_name[month]} {year}"
+    title = f"{AD_MONTH_NAMES[month - 1]} {year}"
     subtitle = f"{start} - {end}, {years}"
     if devnagari:
         title, subtitle = to_devnagari_numerals(title), to_devnagari_numerals(subtitle)
