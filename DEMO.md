@@ -3,7 +3,7 @@
 Every command, every option, and every failure mode.
 
 All output below was captured by running the commands, not written by hand.
-Captured 2026-08-12 against v0.3.0 — anything involving *today* will differ when
+Captured 2026-09-08 against v0.3.0 — anything involving *today* will differ when
 you run it, and is marked where that matters.
 
 - [Conversions](#conversions)
@@ -351,13 +351,13 @@ $ nepkit
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
 nepkit v0.3.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
-Today  BS 27 Shrawan 2083   AD 12 Aug 2026 Wed
+Today  14:32 NPT  BS 27 Shrawan 2083   AD 12 Aug 2026 14:32 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
 
 nepkit> today
-BS २७ साउन २०८३ बुध
-AD 12 Aug 2026 Wed
+BS २७ साउन २०८३ १४:३२ बुध
+AD 12 Aug 2026 14:32 Wed
 nepkit> bs2ad 2081-04-15
 AD 30 Jul 2024 (2024-07-30) Tue
 nepkit> calbs 2081 9
@@ -683,7 +683,8 @@ $ nepkit calbs --help
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
 │   year       <int>  Year. Defaults to the current one.                       │
-│   month      <int>  Month, 1-12. Defaults to the current one.                │
+│   month      <str>  Month: 1-12 or its BS name (e.g. 'Shrawan'),             │
+│                     case-insensitive. Defaults to the current one.           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --json                                Emit machine-readable JSON.            │
