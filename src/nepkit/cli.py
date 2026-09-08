@@ -24,11 +24,11 @@ import json
 import shlex
 import sys
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import date, datetime
 from enum import StrEnum
 from importlib.metadata import version
-from typing import Annotated, Final
+from typing import Annotated, Any, Final, cast
 from zoneinfo import ZoneInfo
 
 import typer
@@ -342,6 +342,24 @@ VersionOption = Annotated[
 ]
 
 
+def _ensure_utf8_stdio() -> None:
+    """Force stdout/stderr to UTF-8, in place of a Windows console's ANSI codepage.
+
+    `today` defaults to `--script devnagari`, and every other command accepts
+    it, so Devanagari output is no longer opt-in. `typer.echo` writes straight
+    to `sys.stdout`, which on Windows defaults to the console's codepage
+    (commonly cp1252) -- a stream that cannot encode Devanagari at all raises
+    `UnicodeEncodeError` on the first such character. This has to run before
+    anything is printed.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        # Not every stream supports reconfigure (some test doubles don't), and
+        # a stream already mid-write cannot change encoding -- either way,
+        # printing has to proceed rather than crash on the encoding fix itself.
+        with suppress(AttributeError, ValueError, OSError):
+            cast(Any, stream).reconfigure(encoding="utf-8")
+
+
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context, show_version: VersionOption = False) -> None:
     """Bikram Sambat <-> Gregorian date conversion.
@@ -355,6 +373,7 @@ def main(ctx: typer.Context, show_version: VersionOption = False) -> None:
         Whether `--version` was passed. Handled entirely by
         `_version_callback`; unused here beyond declaring the option.
     """
+    _ensure_utf8_stdio()
     if ctx.invoked_subcommand is not None:
         return
     if not _stdin_is_interactive():

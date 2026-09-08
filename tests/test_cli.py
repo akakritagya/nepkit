@@ -13,6 +13,7 @@ The contract these tests pin down:
 import builtins
 import json
 import re
+import sys
 from datetime import date, datetime
 from importlib.metadata import version
 
@@ -90,6 +91,33 @@ def test_version_flag_prints_the_version_and_exits_0() -> None:
 
 def test_short_version_flag_matches_the_long_one() -> None:
     assert runner.invoke(cli.app, ["-v"]).stdout == runner.invoke(cli.app, ["--version"]).stdout
+
+
+def test_ensure_utf8_stdio_reconfigures_stdout_and_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`today` defaults to Devanagari, so stdout must not stay on a Windows
+    console's ANSI codepage, which cannot encode it and raises
+    UnicodeEncodeError on the first such character."""
+    encodings: list[str] = []
+
+    class _Stream:
+        def reconfigure(self, *, encoding: str) -> None:
+            encodings.append(encoding)
+
+    monkeypatch.setattr(sys, "stdout", _Stream())
+    monkeypatch.setattr(sys, "stderr", _Stream())
+    cli._ensure_utf8_stdio()
+    assert encodings == ["utf-8", "utf-8"]
+
+
+def test_ensure_utf8_stdio_tolerates_streams_that_cannot_reconfigure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _StreamWithoutReconfigure:
+        pass
+
+    monkeypatch.setattr(sys, "stdout", _StreamWithoutReconfigure())
+    monkeypatch.setattr(sys, "stderr", _StreamWithoutReconfigure())
+    cli._ensure_utf8_stdio()  # must not raise
 
 
 def test_bare_invocation_without_a_terminal_still_prints_help_and_exits_2() -> None:
