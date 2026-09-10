@@ -122,26 +122,31 @@ class Script(StrEnum):
 
 
 def _today() -> date:
-    """Return today's date.
+    """Return today's date in Nepal Standard Time.
+
+    Built on `_now_npt()` rather than `date.today()`: the civil BS calendar
+    flips at NPT midnight, and reading the host machine's own local date
+    instead rolls the "current month" default over at whatever midnight the
+    machine's own timezone happens to hit -- wrong by hours on any machine
+    not itself set to Asia/Kathmandu.
 
     Seam for tests. Patch this rather than the clock itself.
 
     Returns
     -------
     date
-        Today's Gregorian date.
+        Today's Gregorian date, as of Nepal Standard Time.
     """
-    return date.today()
+    return _now_npt().date()
 
 
 def _now_npt() -> datetime:
     """Return the current date and time in Nepal Standard Time, naive.
 
-    Separate from `_today()`, and not built on top of it: the two commands
-    that show a time (`today`, and the REPL banner) need their date and
-    time to come from the same clock read, or the two could disagree by a
-    few milliseconds at a day boundary. Everywhere else keeps using
-    `_today()`, unaffected by this.
+    `today` and the REPL banner need their date and time to come from the
+    same clock read, or the two could disagree by a few milliseconds at a
+    day boundary -- they call this directly rather than going through
+    `_today()`.
 
     Seam for tests. Patch this rather than the clock itself.
 

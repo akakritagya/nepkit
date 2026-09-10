@@ -315,6 +315,21 @@ def test_now_npt_resolves_nepal_standard_time_on_this_platform() -> None:
     assert isinstance(now, datetime)
 
 
+def test_today_tracks_nepal_standard_time_not_the_host_clock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`_today()` must roll over at NPT midnight, the same instant `_now_npt()` does.
+
+    `calbs`/`calad` (and the grid's today-highlight) default off `_today()`.
+    If it reads the host machine's own local date instead of NPT, it rolls
+    over at whatever midnight the machine's own timezone happens to hit --
+    hours away from real NPT midnight on any machine not itself set to
+    Asia/Kathmandu.
+    """
+    monkeypatch.setattr(cli, "_now_npt", lambda: datetime(2024, 7, 30, 23, 50))
+    assert cli._today() == date(2024, 7, 30)
+
+
 def test_line_editing_survives_a_readline_that_explodes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
