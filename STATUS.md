@@ -12,6 +12,14 @@ every command's current output, captured live.
 
 Nothing yet.
 
+## v0.4.1 — 2026-09-11
+
+- **`_today()` now rolls over at Nepal Standard Time**
+  ([#43](https://github.com/akakritagya/nepkit/pull/43), 2026-09-11), not the
+  host machine's own local midnight. `calbs`/`calad`'s today-highlight and
+  every command defaulting off "today" could show the wrong day for hours
+  around midnight NPT on a machine not itself set to Asia/Kathmandu.
+
 ## v0.4.0 — 2026-09-08
 
 - **Promoted the CLI's date parsing/formatting into the library**
