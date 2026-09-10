@@ -3,7 +3,7 @@
 Every command, every option, and every failure mode.
 
 All output below was captured by running the commands, not written by hand.
-Captured 2026-09-08 against v0.4.0 — anything involving *today* will differ when
+Captured 2026-09-11 against v0.4.1 — anything involving *today* will differ when
 you run it, and is marked where that matters.
 
 - [Conversions](#conversions)
@@ -350,7 +350,7 @@ $ nepkit
 | | | ||  __/ | |_) ||   < | || |_
 |_| |_| \___| | .__/ |_|\_\|_| \__|
               |_|
-nepkit v0.4.0 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
+nepkit v0.4.1 - Bikram Sambat (BS) <-> Gregorian (AD) date conversion
 Today  14:32 NPT  BS 27 Shrawan 2083   AD 12 Aug 2026 14:32 Wed
 
 Type a command, 'help', 'clear', or 'quit'.  Up/Down recalls history.
@@ -543,7 +543,7 @@ bs_to_ad(BSDate(2081, 4, 15))  # datetime.date(2024, 7, 30)
 ad_to_bs(date(2024, 7, 30))  # BSDate(year=2081, month=4, day=15)
 days_in_month(2081, 4)  # 32
 BS_MONTH_NAMES[3]  # 'Shrawan'
-__version__  # '0.4.0'
+__version__  # '0.4.1'
 ```
 
 `BSDate` mirrors `datetime.date`'s string handling, and `parse_bs_date`/
@@ -641,7 +641,7 @@ For narrated, runnable scripts covering this API one use case at a time, see
 
 ```console
 $ nepkit --version
-nepkit 0.4.0
+nepkit 0.4.1
 ```
 
 `-v` and `-h` work as short forms everywhere `--version` and `--help` do --
@@ -650,7 +650,7 @@ own `context_settings` rather than a per-command option:
 
 ```console
 $ nepkit -v
-nepkit 0.4.0
+nepkit 0.4.1
 ```
 
 ```console
