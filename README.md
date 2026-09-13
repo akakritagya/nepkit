@@ -17,6 +17,8 @@ command-line tool.
 [![Python](https://img.shields.io/pypi/pyversions/nepkit)](https://pypi.org/project/nepkit/)
 [![License](https://img.shields.io/pypi/l/nepkit)](https://github.com/akakritagya/nepkit/blob/main/LICENSE)
 
+https://github.com/user-attachments/assets/640b62dc-084f-4a2a-962e-4ab2d561f0fc
+
 > **Status:** published, pre-1.0. The library and CLI both work and are
 > tested, but the API and the CLI's output shapes may still change before
 > 1.0. Pin a version if you script against stdout, or use `--json` instead.
